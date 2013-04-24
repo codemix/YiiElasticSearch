@@ -1,0 +1,174 @@
+<?php
+
+namespace YiiElasticSearch;
+
+use \CApplicationComponent as ApplicationComponent;
+
+use \Yii as Yii;
+
+
+/**
+ * The elastic search elasticSearchConnection is responsible for actually interacting with elastic search,
+ * e.g. indexing documents, performing queries etc.
+ *
+ * It should be configured in the application config under the components array
+ * <pre>
+ *  'components' => array(
+ *      'elasticSearch' => array(
+ *          'class' => "YiiElasticSearch\\Connection",
+ *          'baseUrl' => 'http://localhost:9200/',
+ *      )
+ *  ),
+ * </pre>
+ *
+ * @author Charles Pick <charles.pick@gmail.com>
+ * @licence MIT
+ * @package YiiElasticSearch
+ */
+class Connection extends ApplicationComponent
+{
+    /**
+     * @var string the base URL that elastic search is available from
+     */
+    public $baseUrl = "http://localhost:9200/";
+
+    /**
+     * @var boolean whether or not to profile elastic search requests
+     */
+    public $enableProfiling = false;
+
+    /**
+     * @var \Guzzle\Http\Client the guzzle client
+     */
+    protected $_client;
+
+    /**
+     * @var \Guzzle\Http\Client the async guzzle client
+     */
+    protected $_asyncClient;
+
+    /**
+     * @param \Guzzle\Http\Client $asyncClient
+     */
+    public function setAsyncClient($asyncClient)
+    {
+        $this->_asyncClient = $asyncClient;
+    }
+
+    /**
+     * @return \Guzzle\Http\Client
+     */
+    public function getAsyncClient()
+    {
+        if ($this->_asyncClient === null) {
+            $this->_asyncClient = new \Guzzle\Http\Client($this->baseUrl);
+            $this->_asyncClient->addSubscriber(new \Guzzle\Plugin\Async\AsyncPlugin());
+        }
+        return $this->_asyncClient;
+    }
+
+
+
+    /**
+     * @param \Guzzle\Http\Client $client
+     */
+    public function setClient($client)
+    {
+        $this->_client = $client;
+    }
+
+    /**
+     * @return \Guzzle\Http\Client
+     */
+    public function getClient()
+    {
+        if ($this->_client === null) {
+            $this->_client = new \Guzzle\Http\Client($this->baseUrl);
+        }
+        return $this->_client;
+    }
+
+    /**
+     * Add a document to the index
+     * @param DocumentInterface $document the document to index
+     * @param bool $async whether or not to perform an async request.
+     *
+     * @return \Guzzle\Http\Message\Response|mixed the response from elastic search
+     */
+    public function index(DocumentInterface $document, $async = false)
+    {
+        $url = $document->getIndexName().'/'.$document->getTypeName().'/'.$document->getId();
+        $client = $async ? $this->getAsyncClient() : $this->getClient();
+        $request = $client->put($url)->setBody(json_encode($document->getSource()));
+        return $this->perform($request, $async);
+    }
+
+    /**
+     * Remove a document from elastic search
+     * @param DocumentInterface $document the document to remove
+     * @param bool $async whether or not to perform an async request
+     *
+     * @return \Guzzle\Http\Message\Response|mixed the response from elastic search
+     */
+    public function delete(DocumentInterface $document, $async = false)
+    {
+        $url = $document->getIndexName().'/'.$document->getTypeName().'/'.$document->getId();
+        $client = $async ? $this->getAsyncClient() : $this->getClient();
+        $request = $client->delete($url);
+        return $this->perform($request, $async);
+    }
+
+    /**
+     * Perform an elastic search
+     * @param Criteria $criteria the search criteria
+     *
+     * @return ResultSet the result set containing the response from elastic search
+     */
+    public function search(Criteria $criteria)
+    {
+        $query = json_encode($criteria->toArray());
+        $url = array();
+        if ($criteria->indexName)
+            $url[] = $criteria->indexName;
+        if ($criteria->typeName)
+            $url[] = $criteria->typeName;
+
+        $url[] = "_search";
+        $url = implode("/",$url);
+
+        $client = $this->getClient();
+        $request = $client->post($url, null, $query);
+        $response = $this->perform($request);
+        return new ResultSet($criteria, $response);
+    }
+
+
+    /**
+     * Perform a http request and return the response
+     *
+     * @param \Guzzle\Http\Message\RequestInterface $request the request to preform
+     * @param bool $async whether or not to perform an async request
+     *
+     * @return \Guzzle\Http\Message\Response|mixed the response from elastic search
+     * @throws \Exception
+     */
+    public function perform(\Guzzle\Http\Message\RequestInterface $request, $async = false)
+    {
+        try {
+            $profileKey = null;
+            if ($this->enableProfiling) {
+                $profileKey = __METHOD__.'('.$request->getUrl().')';
+                if ($request instanceof \Guzzle\Http\Message\EntityEnclosingRequest)
+                    $profileKey .= " ".$request->getBody();
+                Yii::beginProfile($profileKey);
+            }
+            $response = $async ? $request->send() : json_decode($request->send()->getBody(true), true);
+            if ($this->enableProfiling)
+                Yii::endProfile($profileKey);
+            return $response;
+        }
+        catch (\Guzzle\Http\Exception\BadResponseException $e) {
+            throw new \Exception($e->getResponse()->getBody(true));
+        }
+    }
+}

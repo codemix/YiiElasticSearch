@@ -1,0 +1,20 @@
+{
+    "name": "php/yiielasticsearch",
+    "description": "Elastic Search client for Yii",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Charles Pick",
+            "email": "charles.pick@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "guzzle/guzzle": "*"
+    },
+    "autoload": {
+        "psr-0": {
+            "YiiElasticSearch": "src/"
+        }
+    }
+}
