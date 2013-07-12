@@ -8,7 +8,7 @@ use \Yii as Yii;
 
 
 /**
- * The elastic search elasticSearchConnection is responsible for actually interacting with elastic search,
+ * The elastic search connection is responsible for actually interacting with elastic search,
  * e.g. indexing documents, performing queries etc.
  *
  * It should be configured in the application config under the components array
@@ -36,6 +36,11 @@ class Connection extends ApplicationComponent
      * @var boolean whether or not to profile elastic search requests
      */
     public $enableProfiling = false;
+
+    /**
+     * @var string an optional prefix for the index. Default is ''.
+     */
+    public $indexPrefix = '';
 
     /**
      * @var \Guzzle\Http\Client the guzzle client
@@ -67,8 +72,6 @@ class Connection extends ApplicationComponent
         return $this->_asyncClient;
     }
 
-
-
     /**
      * @param \Guzzle\Http\Client $client
      */
@@ -97,7 +100,7 @@ class Connection extends ApplicationComponent
      */
     public function index(DocumentInterface $document, $async = false)
     {
-        $url = $document->getIndexName().'/'.$document->getTypeName().'/'.$document->getId();
+        $url = $document->getIndex().'/'.$document->getType().'/'.$document->getId();
         $client = $async ? $this->getAsyncClient() : $this->getClient();
         $request = $client->put($url)->setBody(json_encode($document->getSource()));
         return $this->perform($request, $async);
@@ -112,7 +115,7 @@ class Connection extends ApplicationComponent
      */
     public function delete(DocumentInterface $document, $async = false)
     {
-        $url = $document->getIndexName().'/'.$document->getTypeName().'/'.$document->getId();
+        $url = $document->getIndex().'/'.$document->getType().'/'.$document->getId();
         $client = $async ? $this->getAsyncClient() : $this->getClient();
         $request = $client->delete($url);
         return $this->perform($request, $async);
@@ -120,18 +123,18 @@ class Connection extends ApplicationComponent
 
     /**
      * Perform an elastic search
-     * @param Criteria $criteria the search criteria
+     * @param Search $search the search parameters
      *
      * @return ResultSet the result set containing the response from elastic search
      */
-    public function search(Criteria $criteria)
+    public function search(Search $search)
     {
-        $query = json_encode($criteria->toArray());
+        $query = json_encode($search->toArray());
         $url = array();
-        if ($criteria->indexName)
-            $url[] = $criteria->indexName;
-        if ($criteria->typeName)
-            $url[] = $criteria->typeName;
+        if ($search->index)
+            $url[] = $this->indexPrefix.$search->index;
+        if ($search->type)
+            $url[] = $search->type;
 
         $url[] = "_search";
         $url = implode("/",$url);
@@ -139,7 +142,7 @@ class Connection extends ApplicationComponent
         $client = $this->getClient();
         $request = $client->post($url, null, $query);
         $response = $this->perform($request);
-        return new ResultSet($criteria, $response);
+        return new ResultSet($search, $response);
     }
 
 

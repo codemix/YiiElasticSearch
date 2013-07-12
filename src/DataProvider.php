@@ -17,14 +17,14 @@ use \CDataProvider as CDataProvider;
 class DataProvider extends CDataProvider
 {
     /**
-     * @var SearchableInterface a model implementing the searchable interface
+     * @var CActiveRecord a model implementing the searchable interface
      */
     public $model;
 
     /**
-     * @var Criteria the search criteria
+     * @var Search the search parameters
      */
-    protected $criteria;
+    protected $_search;
 
     /**
      * @var ResultSet the search result set
@@ -32,8 +32,13 @@ class DataProvider extends CDataProvider
     protected $resultSet;
 
     /**
+     * @var mixed the fetched data
+     */
+    protected $fetchedData;
+
+    /**
      * Initialize the data provider
-     * @param SearchableInterface $model the search model
+     * @param CActiveRecord $model the search model
      * @param array $config the data provider configuration
      */
     public function __construct($model, $config = array())
@@ -46,29 +51,29 @@ class DataProvider extends CDataProvider
     }
 
     /**
-     * @param \YiiElasticSearch\Criteria $criteria
+     * @param \YiiElasticSearch\Search $search
      */
-    public function setCriteria($criteria)
+    public function setSearch($search)
     {
-        if (is_array($criteria))
-            $criteria = new Criteria(
-                $this->model->getIndexName(),
-                $this->model->getTypeName(),
-                $criteria
+        if (is_array($search))
+            $search = new Search(
+                $this->model->elasticIndex,
+                $this->model->elasticType,
+                $search
             );
 
-        $this->criteria = $criteria;
+        $this->_search = $search;
     }
 
     /**
-     * @return \YiiElasticSearch\Criteria
+     * @return \YiiElasticSearch\Search
      */
-    public function getCriteria()
+    public function getSearch()
     {
-        if ($this->criteria === null) {
-            $this->criteria = new Criteria(
-                $this->model->getIndexName(),
-                $this->model->getTypeName(),
+        if ($this->_search === null) {
+            $this->_search = new Search(
+                $this->model->elasticIndex,
+                $this->model->elasticType,
                 array(
                     'query' => array(
                         'match_all' => array()
@@ -76,37 +81,36 @@ class DataProvider extends CDataProvider
                 )
             );
         }
-        return $this->criteria;
+        return $this->_search;
     }
 
-
-
-
     /**
-     * Fetches the data from the persistent data storage.
      * @return array list of data items
      */
     protected function fetchData()
     {
-        $criteria = $this->criteria;
-        if (($pagination = $this->getPagination()) !== false) {
-            $criteria['from'] = $pagination->getOffset();
-            $criteria['size'] = $pagination->pageSize;
+        if($this->fetchedData===null) {
+            $search = $this->_search;
+            if (($pagination = $this->getPagination()) !== false) {
+                $search['from'] = $pagination->getOffset();
+                $search['size'] = $pagination->pageSize;
+            }
+
+
+            $this->resultSet = $this->model->getElasticConnection()->search($search);
+
+            $this->fetchedData = array();
+            $modelClass = get_class($this->model);
+            foreach($this->resultSet->getResults() as $result) {
+                $model = new $modelClass;
+                $model->parseElasticDocument($result);
+                $this->fetchedData[] = $model;
+            }
         }
-
-
-        $results = $this->model->getElasticSearchConnection()->search($criteria);
-
-        $this->resultSet = $results;
-        $this->setTotalItemCount($results->getTotal());
-        $data = array();
-        foreach($results->getResults() as $result)
-            $data[] = $this->model->populateFromDocument($result);
-        return $data;
+        return $this->fetchedData;
     }
 
     /**
-     * Fetches the data item keys from the persistent data storage.
      * @return array list of data item keys.
      */
     protected function fetchKeys()
@@ -121,12 +125,14 @@ class DataProvider extends CDataProvider
     }
 
     /**
-     * Calculates the total number of data items.
      * @return integer the total number of data items.
      */
     protected function calculateTotalItemCount()
     {
-        return 99999999;
-    }
+        if($this->resultSet===null) {
+            $this->fetchData();
+        }
 
+        return $this->resultSet->getTotal();
+    }
 }

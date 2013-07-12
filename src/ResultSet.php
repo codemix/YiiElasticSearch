@@ -14,22 +14,22 @@ class ResultSet
     /**
      * @var array the raw response from elastic search
      */
-    public $raw;
+    protected $_raw;
 
     /**
-     * @var Criteria the criteria that was used in the query
+     * @var Search the search that was used in the query
      */
-    public $criteria;
+    protected $_search;
 
     /**
      * Initialize the result set
-     * @param Criteria $criteria
+     * @param Search $search parameters
      * @param array $raw
      */
-    public function __construct(Criteria $criteria, array $raw)
+    public function __construct(Search $search, array $raw)
     {
-        $this->criteria = $criteria;
-        $this->raw = $raw;
+        $this->_search = $search;
+        $this->_raw = $raw;
     }
 
     /**
@@ -37,18 +37,17 @@ class ResultSet
      */
     public function getFacets()
     {
-        return $this->raw['facets'];
+        return $this->_raw['facets'];
     }
 
 
     /**
-     * Gets the search results
      * @return SearchResult[] the search results
      */
     public function getResults()
     {
         $hits = array();
-        foreach($this->raw['hits']['hits'] as $hit) {
+        foreach($this->_raw['hits']['hits'] as $hit) {
             $hits[] = new SearchResult($this, $hit);
         }
         return $hits;
@@ -59,7 +58,7 @@ class ResultSet
      */
     public function countResults()
     {
-        return count($this->raw['hits']['hits']);
+        return count($this->_raw['hits']['hits']);
     }
 
     /**
@@ -67,6 +66,11 @@ class ResultSet
      */
     public function getTotal()
     {
-        return $this->raw['hits']['total'];
+        return $this->_raw['hits']['total'];
+    }
+
+    public function getRaw()
+    {
+        return $this->_raw;
     }
 }
