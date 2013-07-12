@@ -29,7 +29,7 @@ Add the following to your application config:
 
 ## Index your ActiveRecords
 
-Attach the `YiiElasticSearch\SearchableBehavior` to any of your ActiveRecord to make it easy
+Attach the `YiiElasticSearch\SearchableBehavior` to any of your ActiveRecords to make it easy
 to index and search your normal models with elasticsearch.
 
 ```php
@@ -95,6 +95,41 @@ class MyModel extends CActiveRecord
     }
 ```
 
+### Customize indexed data
+
+By default all attributes are stored in the index. If you need to customize the data
+that should be indexed in elasticsearch, you can override these two methods.
+
+```php
+class MyModel extends CActiveRecord
+{
+    /**
+     * @param DocumentInterface $document the document where the indexable data must be applied to.
+     */
+    public function populateElasticDocument(DocumentInterface $document)
+    {
+        $document->setId($this->id);
+        $document->name = $this->name;
+        $document->street = $this->street;
+    }
+
+    /**
+     * @param DocumentInterface $document the document that is providing the data for this record.
+     */
+    public function parseElasticDocument(DocumentInterface $document)
+    {
+        $this->id($document->getId());
+
+        // You should always set the match score from the result document
+        if ($document instanceof SearchResult)
+            $this->setElasticScore($document->getScore());
+
+        $this->name = $document->name;
+        $this->street = $document->stree;
+    }
+```
+
+
 ## Query records
 
 You can specify queries using the `YiiElasticSearch\Search` object. This object provides a simple
@@ -109,7 +144,7 @@ $search->query = array(
 );
 
 // start returning results from the 20th onwards
-$search->from = 20;
+$search->offset = 20;
 ```
 
 With a search you can either perform a 'raw' query, e.g.
@@ -128,7 +163,7 @@ $dataProvider = new \YiiElasticSearch\DataProvider(MyModel::model(), array(
 ));
 ```
 
-The data from `$dataProvider->data` is a list of ActiveRecords, just like from a regular
+The data from `$dataProvider->data` is a list of ActiveRecords, just like from an ordinary
 `CActiveDataProvider`. So you can use it in any list or grid view.
 
 ## Raw requests

@@ -79,48 +79,40 @@ class SearchableBehavior extends CActiveRecordBehavior
     }
 
     /**
-     * @return DocumentInterface the indexable document to be added to the elasticsearch index.
+     * @param DocumentInterface $document the document where the indexable data must be applied to.
      * Override this method in a record to define which data should get indexed. By default all
-     * record attributes are added to the index.
+     * record attributes get indexed.
      */
-    public function createElasticDocument()
+    public function populateElasticDocument(DocumentInterface $document)
     {
-        $document = $this->createDocumentInstance();
         $document->setId($this->getPrimaryKey());
         foreach($this->attributeNames() as $name)
             $document->{$name} = $this->{$name};
-        return $document;
     }
 
     /**
-     * Apply the attributes from a elasticsearch document to a new owner object
-     *
+     * @param DocumentInterface $document the document that is providing the data for this record.
      * Override this method to apply custom data from a search result to a new record.
-     *
-     * @param DocumentInterface $document the document that is providing the data
-     * @return CActiveRecord a new object with the attributes applied.
      */
-    public function populateFromElasticDocument(DocumentInterface $document)
+    public function parseElasticDocument(DocumentInterface $document)
     {
-        $class = get_class($this->owner);
-        $model = new $class; /* @var CActiveRecord $model */
-        $model->setPrimaryKey($document->getId());
+        $this->owner->setPrimaryKey($document->getId());
         if ($document instanceof SearchResult)
-            $model->setElasticScore($document->getScore());
+            $this->owner->setElasticScore($document->getScore());
         foreach($document->getSource() as $attribute => $value)
-            $model->{$attribute} = $value;
-        return $model;
+            $this->owner->{$attribute} = $value;
     }
 
     /**
      * @return Document a new elasticsearch document instance
      */
-    protected function createDocumentInstance()
+    protected function createElasticDocument()
     {
         $document = new Document();
         $document->setElasticConnection($this->_elasticConnection);
         $document->setIndexName($this->_elasticConnection->indexPrefix.$this->owner->elasticIndex);
         $document->setTypeName($this->owner->elasticType);
+        $this->populateElasticDocument($document);
         return $document;
     }
 
@@ -130,7 +122,7 @@ class SearchableBehavior extends CActiveRecordBehavior
     protected function afterSave()
     {
         if ($this->autoIndex)
-            $this->getElasticConnection()->index($this->createDocument());
+            $this->getElasticConnection()->index($this->createElasticDocument());
         parent::afterSave();
     }
 
@@ -140,7 +132,7 @@ class SearchableBehavior extends CActiveRecordBehavior
     protected function afterDelete()
     {
         if ($this->autoIndex)
-            $this->getElasticConnection()->delete($this->createDocument());
+            $this->getElasticConnection()->delete($this->createElasticDocument());
         parent::afterDelete();
     }
 

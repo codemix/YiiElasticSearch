@@ -100,8 +100,12 @@ class DataProvider extends CDataProvider
             $this->resultSet = $this->model->getElasticConnection()->search($search);
 
             $this->fetchedData = array();
-            foreach($this->resultSet->getResults() as $result)
-                $this->fetchedData[] = $this->model->populateFromElasticDocument($result);
+            $modelClass = get_class($this->model);
+            foreach($this->resultSet->getResults() as $result) {
+                $model = new $modelClass;
+                $model->parseElasticDocument($result);
+                $this->fetchedData[] = $model;
+            }
         }
         return $this->fetchedData;
     }
