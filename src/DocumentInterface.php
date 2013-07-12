@@ -12,33 +12,27 @@ interface DocumentInterface
 {
 
     /**
-     * Get the elastic search elasticSearchConnection to use for this document
-     * @return Connection the elastic search elasticSearchConnection
+     * @return Connection the elasticsearch connection to use for this document
      */
-    public function getElasticSearchConnection();
+    public function getConnection();
 
     /**
-     * Get the name of the elastic search index
-     * that this document is stored in.
-     * @return string the name of the index
+     * @return string the name of the index that this document is stored in, inlcuding any indexPrefix
      */
-    public function getIndexName();
+    public function getIndex();
 
     /**
-     * Get the name of the elastic search type
-     * that this document belongs to within an index
+     * @param string the name of the index that this document is stored in, including any indexPrefix
      */
-    public function getTypeName();
+    public function getType();
 
     /**
-     * Gets the document ID
-     * @return mixed the document ID
+     * @return mixed the ID of this document in the elasticsearch index
      */
     public function getId();
 
     /**
-     * Get the data that should be indexed
-     * @return array the indexable document data
+     * @return array the data that should be indexed
      */
     public function getSource();
 }

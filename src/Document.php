@@ -6,6 +6,10 @@ use \Yii as Yii;
 
 /**
  * Represents a document that can be added to and retrieved from elastic search
+ *
+ * Arbitrary attributes can be set on a document object and will be indexed and
+ * read back from the index.
+ *
  * @author Charles Pick <charles.pick@gmail.com>
  * @licence MIT
  * @package YiiElasticSearch
@@ -15,124 +19,116 @@ class Document implements DocumentInterface
     /**
      * @var Connection the elasticSearchConnection to use for this document
      */
-    protected $connection;
+    protected $_connection;
 
     /**
      * @var mixed the id of the document
      */
-    protected $id;
+    protected $_id;
 
     /**
      * @var string the name of the index
      */
-    protected $indexName;
+    protected $_index;
 
     /**
      * @var string the name of the type
      */
-    protected $typeName;
+    protected $_type;
 
     /**
      * @var array the document data
      */
-    protected $source = array();
+    protected $_source = array();
 
     /**
-     * Get the elastic search elasticSearchConnection to use for this document
-     * @return Connection the elastic search elasticSearchConnection
-     * @throws \Exception if no elasticSearchConnection is specified
+     * @return Connection the elasticsearch connection to use for this document
+     * @throws \Exception if no connection is specified
      */
-    public function getElasticSearchConnection()
+    public function getConnection()
     {
-        if ($this->connection === null) {
+        if ($this->_connection === null) {
             if (Yii::app()->hasComponent('elasticSearch'))
                 return Yii::app()->getComponent('elasticSearch');
             throw new \Exception(__CLASS__." expects an 'elasticSearch' application component");
         }
-        return $this->connection;
+        return $this->_connection;
     }
 
     /**
-     * Sets the elastic search elasticSearchConnection to use for this document
-     * @param \YiiElasticSearch\Connection $connection
+     * @param \YiiSearch\Connection $connection to use for this document
      */
-    public function setElasticSearchConnection($connection)
+    public function setConnection($connection)
     {
-        $this->connection = $connection;
+        $this->_connection = $connection;
     }
 
     /**
-     * Get the name of the elastic search index
-     * that this document is stored in.
-     * @return string the name of the index
+     * @return string the name of the index that this document is stored in, inlcuding any indexPrefix
      */
-    public function getIndexName()
+    public function getIndex()
     {
-        return $this->indexName;
+        return $this->_index;
     }
 
     /**
-     * @param string $indexName
+     * @param string the name of the index that this document is stored in, including any indexPrefix
      */
-    public function setIndexName($indexName)
+    public function setIndex($index)
     {
-        $this->indexName = $indexName;
+        $this->_index = $index;
     }
 
     /**
-     * Get the name of the elastic search type
-     * that this document belongs to within an index
+     * @return string the name of the type that this document is stored as
      */
-    public function getTypeName()
+    public function getType()
     {
-        return $this->typeName;
+        return $this->_type;
     }
 
     /**
-     * @param string $typeName
+     * @param string the name of the type that this document is stored as
      */
-    public function setTypeName($typeName)
+    public function setType($type)
     {
-        $this->typeName = $typeName;
+        $this->_type = $type;
     }
 
     /**
-     * Gets the document ID
-     * @return mixed the document ID
+     * @return mixed the ID of this document in the elasticsearch index
      */
     public function getId()
     {
-        return $this->id;
+        return $this->_id;
     }
 
     /**
-     * @param mixed $id
+     * @param mixed the ID of this document in the elasticsearch index
      */
     public function setId($id)
     {
-        $this->id = $id;
+        $this->_id = $id;
     }
 
 
     /**
-     * Get the data that should be indexed
-     * @return array the indexable document data
+     * @return array the data that should be indexed
      */
     public function getSource()
     {
-        return $this->source;
+        return $this->_source;
     }
 
     /**
-     * @param array $source
+     * @param array the data that should be indexed
      */
-    public function setSource($source)
+    public function setSource($data)
     {
-        $this->source = $source;
+        $this->_source = $data;
     }
 
     /**
-     * Get the named field value     *
      * @param string $name the name of the field to access
      * @return mixed the value
      *
@@ -146,7 +142,6 @@ class Document implements DocumentInterface
     }
 
     /**
-     * Sets the named field value
      * @param string $name the name of the field to set
      * @param mixed $value the value to set
      */
@@ -156,10 +151,8 @@ class Document implements DocumentInterface
     }
 
     /**
-     * Determine whether or not the document has a field with the fiven name
      * @param string $name the field name
-     *
-     * @return bool
+     * @return bool wether the document has a field with the given name
      */
     public function __isset($name)
     {
@@ -167,7 +160,7 @@ class Document implements DocumentInterface
     }
 
     /**
-     * Removes the named field.
+     * Removes the named field
      * @param string $name the name of the field to remove
      */
     public function __unset($name)

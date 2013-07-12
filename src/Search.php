@@ -3,23 +3,37 @@
 namespace YiiElasticSearch;
 
 /**
- * Represents a query for elastic search
+ * Represents a search request to elasticsearch
+ *
+ * This class is mainly an OO container for search parameters.
+ * See http://www.elasticsearch.org/guide/reference/api/search/
+ * for available parameters.
+ *
+ * You can set arbitrary properties:
+ *
+ *      $search = new YiiElasticSearch\Search;
+ *      $search->query = array(
+ *          'match_all' => array(),
+ *      );
+ *      $search->filter = array(
+ *          'term' => array('user'=>'foo'),
+ *      );
  *
  * @author Charles Pick <charles.pick@gmail.com>
  * @licence MIT
  * @package YiiElasticSearch
  */
-class Criteria implements \ArrayAccess, \Countable
+class Search implements \ArrayAccess, \Countable
 {
     /**
      * @var string the name of the index to search within
      */
-    public $indexName;
+    public $index;
 
     /**
      * @var string the name of the document type within the index
      */
-    public $typeName;
+    public $type;
 
     /**
      * @var array the internal data storage
@@ -27,14 +41,14 @@ class Criteria implements \ArrayAccess, \Countable
     private $data = array();
 
     /**
-     * @param string|null $indexName the name of the index to search within
-     * @param string|null $typeName the name of the document type
+     * @param string|null $index the name of the index to search within
+     * @param string|null $type the name of the document type
      * @param array $data the query data
      */
-    public function __construct($indexName = null, $typeName = null, $data = array())
+    public function __construct($index = null, $type = null, $data = array())
     {
-        $this->indexName = $indexName;
-        $this->typeName = $typeName;
+        $this->index = $index;
+        $this->type = $type;
         $this->data = $data;
     }
 
@@ -156,7 +170,7 @@ class Criteria implements \ArrayAccess, \Countable
     }
 
     /**
-     * Determine whether or not the criteria has a field with the given name
+     * Determine whether or not the search has a field with the given name
      * @param string $name the field name
      *
      * @return bool
