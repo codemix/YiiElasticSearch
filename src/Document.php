@@ -136,8 +136,8 @@ class Document implements DocumentInterface
      */
     public function __get($name)
     {
-        if (isset($this->source[$name]))
-            return $this->source[$name];
+        if (isset($this->_source[$name]))
+            return $this->_source[$name];
         throw new \Exception(__CLASS__.' has no such property: '.$name);
     }
 
@@ -147,7 +147,7 @@ class Document implements DocumentInterface
      */
     public function __set($name, $value)
     {
-        $this->source[$name] = $value;
+        $this->_source[$name] = $value;
     }
 
     /**
@@ -156,7 +156,7 @@ class Document implements DocumentInterface
      */
     public function __isset($name)
     {
-        return isset($this->source[$name]);
+        return isset($this->_source[$name]);
     }
 
     /**
@@ -165,7 +165,7 @@ class Document implements DocumentInterface
      */
     public function __unset($name)
     {
-        unset($this->source[$name]);
+        unset($this->_source[$name]);
     }
 
 

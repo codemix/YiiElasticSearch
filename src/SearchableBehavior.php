@@ -38,8 +38,9 @@ class SearchableBehavior extends CActiveRecordBehavior
     {
         if ($this->_elasticConnection === null) {
             if (Yii::app()->hasComponent('elasticSearch'))
-                return Yii::app()->getComponent('elasticSearch');
-            throw new \Exception(__CLASS__." expects an 'elasticSearch' application component");
+                $this->_elasticConnection = Yii::app()->getComponent('elasticSearch');
+            else
+                throw new \Exception(__CLASS__." expects an 'elasticSearch' application component");
         }
         return $this->_elasticConnection;
     }
@@ -79,15 +80,23 @@ class SearchableBehavior extends CActiveRecordBehavior
     }
 
     /**
+     * Add/Update this document to/in the elasticsearch index
+     */
+    public function indexElasticDocument()
+    {
+        $this->getElasticConnection()->index($this->createElasticDocument());
+    }
+
+    /**
      * @param DocumentInterface $document the document where the indexable data must be applied to.
      * Override this method in a record to define which data should get indexed. By default all
      * record attributes get indexed.
      */
     public function populateElasticDocument(DocumentInterface $document)
     {
-        $document->setId($this->getPrimaryKey());
-        foreach($this->attributeNames() as $name)
-            $document->{$name} = $this->{$name};
+        $document->setId($this->owner->getPrimaryKey());
+        foreach($this->owner->attributeNames() as $name)
+            $document->{$name} = $this->owner->{$name};
     }
 
     /**
@@ -109,9 +118,9 @@ class SearchableBehavior extends CActiveRecordBehavior
     protected function createElasticDocument()
     {
         $document = new Document();
-        $document->setElasticConnection($this->_elasticConnection);
-        $document->setIndexName($this->_elasticConnection->indexPrefix.$this->owner->elasticIndex);
-        $document->setTypeName($this->owner->elasticType);
+        $document->setConnection($this->_elasticConnection);
+        $document->setIndex($this->_elasticConnection->indexPrefix.$this->owner->elasticIndex);
+        $document->setType($this->owner->elasticType);
         $this->populateElasticDocument($document);
         return $document;
     }
@@ -119,22 +128,20 @@ class SearchableBehavior extends CActiveRecordBehavior
     /**
      * Invoked after the model is saved, adds the model to elastic search
      */
-    protected function afterSave()
+    public function afterSave($event)
     {
         if ($this->autoIndex)
-            $this->getElasticConnection()->index($this->createElasticDocument());
+            $this->indexElasticDocument();
         parent::afterSave();
     }
 
     /**
      * Invoked after the model is deleted, removes the model from elastic search too.
      */
-    protected function afterDelete()
+    public function afterDelete($event)
     {
         if ($this->autoIndex)
             $this->getElasticConnection()->delete($this->createElasticDocument());
         parent::afterDelete();
     }
-
-
 }
