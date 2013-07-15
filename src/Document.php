@@ -42,11 +42,6 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
     protected $_source = array();
 
     /**
-     * @var int Iterator position
-     */
-    protected $_pos = 0;
-
-    /**
      * @return Connection the elasticsearch connection to use for this document
      * @throws \Exception if no connection is specified
      */
