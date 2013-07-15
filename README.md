@@ -30,7 +30,7 @@ to add this line to your `index.php` and maybe also your `yiic.php`:
 
 ```php
 // Include composer autoloader
-require_once(Yii::getPathOfAlias('application.vendor').'/autoload.php');
+require_once(__DIR__.'/protected/vendor/autoload.php');
 ```
 
 Make sure to modify the path so that it matches the location of your `vendor/`
