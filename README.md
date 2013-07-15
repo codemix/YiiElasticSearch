@@ -25,6 +25,17 @@ Add the following to your application config:
 )
 ```
 
+Also make sure, that you include the autoloader of composer. We recommend
+to add this line to your `index.php` and maybe also your `yiic.php`:
+
+```php
+// Include composer autoloader
+require_once(__DIR__.'/protected/vendor/autoload.php');
+```
+
+Make sure to modify the path so that it matches the location of your `vendor/`
+directory.
+
 # Usage
 
 ## Index your ActiveRecords
@@ -192,3 +203,49 @@ $response = $client
 
 $result = $response->getBody();
 ```
+
+## Console Maintenance
+
+The extension comes with a simple maintenance command that can be helpful to find out
+what's going on in your index. To configure it, add this to your `console.php` configuration:
+
+```php
+'commandMap' => array(
+    'elastic' => array(
+        'class' => 'YiiElasticSearch\ConsoleCommand',
+    ),
+),
+```
+
+This will allow you to use `yiic elastic` on the console. Here's the command help:
+
+```
+USAGE
+  yiic elastic [action] [parameter]
+
+DESCRIPTION
+  This is the maintenance command for the elasticsearch component. It
+  allows to manage or list entries in the elasticsearch index.
+
+ACTIONS
+
+  index --model=<name>
+
+    Add all models <name> to the index. This will replace any previous
+    entries for this model in the index.
+
+  list [--model=<name>] [--limit=10] [--offset=0]
+
+    List all entries in elasticsearch. If a model is specified only entries
+    matching index and type of the model will be listed.
+
+  delete --model=<name> [--id=<id>]
+
+    Delete a document from an index. If no <id> is specified the whole
+    index will be deleted.
+
+  help
+
+    Show this help
+``````
+

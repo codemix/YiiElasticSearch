@@ -121,7 +121,7 @@ class SearchableBehavior extends CActiveRecordBehavior
         $document->setConnection($this->_elasticConnection);
         $document->setIndex($this->_elasticConnection->indexPrefix.$this->owner->elasticIndex);
         $document->setType($this->owner->elasticType);
-        $this->populateElasticDocument($document);
+        $this->owner->populateElasticDocument($document);
         return $document;
     }
 
