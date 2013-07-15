@@ -2,6 +2,8 @@
 
 namespace YiiElasticSearch;
 
+use \CComponent as CComponent;
+
 /**
  * Represents the response of a query from elastic search
  *
@@ -9,7 +11,7 @@ namespace YiiElasticSearch;
  * @licence MIT
  * @package YiiElasticSearch
  */
-class ResultSet
+class ResultSet extends CComponent
 {
     /**
      * @var array the raw response from elastic search
@@ -56,7 +58,7 @@ class ResultSet
     /**
      * @return int the number of returned results
      */
-    public function countResults()
+    public function getCount()
     {
         return count($this->_raw['hits']['hits']);
     }

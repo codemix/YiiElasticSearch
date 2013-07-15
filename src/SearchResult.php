@@ -51,6 +51,4 @@ class SearchResult extends Document
     {
         return $this->_resultSet;
     }
-
-
 }
