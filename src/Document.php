@@ -14,7 +14,7 @@ use \Yii as Yii;
  * @licence MIT
  * @package YiiElasticSearch
  */
-class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
+class Document implements DocumentInterface, \ArrayAccess, \Countable, \IteratorAggregate
 {
     /**
      * @var Connection the elasticSearchConnection to use for this document
@@ -174,7 +174,7 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
     }
 
     /**
-     * @return array an array representation of the query
+     * @return array an array representation of the document
      */
     public function toArray()
     {
@@ -267,52 +267,10 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
     }
 
     /**
-     * Rewind to first element of Iterator
-     *
-     * @link http://www.php.net/manual/en/iterator.rewind.php
-     * @return void
+     * @return Iterator as required for IteratorAggrete
      */
-    public function rewind()
+    public function getIterator()
     {
-        $this->_pos = 0;
+        return new \ArrayIterator($this->_source);
     }
-
-    /**
-     * @link http://www.php.net/manual/en/iterator.current.php
-     * @return mixed the current element value of the Iterator
-     */
-    public function current()
-    {
-        $values = array_values($this->_source);
-        return $values[$this->_pos];
-    }
-
-    /**
-     * @link http://www.php.net/manual/en/iterator.key.php
-     * @return mixed the current element key of the Iterator
-     */
-    public function key()
-    {
-        $keys = array_keys($this->_source);
-        return $keys[$this->_pos];
-    }
-
-    /**
-     * @link http://www.php.net/manual/en/iterator.next.php
-     */
-    public function next()
-    {
-        ++$this->_pos;
-    }
-
-    /**
-     * @link http://www.php.net/manual/en/iterator.valid.php
-     * @return mixed wether there are more elements to iterate
-     */
-    public function valid()
-    {
-        $keys = array_keys($this->_source);
-        return isset($keys[$this->_pos]);
-    }
-
 }
