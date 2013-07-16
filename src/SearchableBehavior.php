@@ -130,7 +130,7 @@ class SearchableBehavior extends CActiveRecordBehavior
      */
     public function afterSave($event)
     {
-        if ($this->autoIndex)
+        if ($this->elasticAutoIndex)
             $this->indexElasticDocument();
         parent::afterSave();
     }
@@ -140,7 +140,7 @@ class SearchableBehavior extends CActiveRecordBehavior
      */
     public function afterDelete($event)
     {
-        if ($this->autoIndex)
+        if ($this->elasticAutoIndex)
             $this->getElasticConnection()->delete($this->createElasticDocument());
         parent::afterDelete();
     }
