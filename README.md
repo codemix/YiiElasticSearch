@@ -120,8 +120,8 @@ class MyModel extends CActiveRecord
     public function populateElasticDocument(DocumentInterface $document)
     {
         $document->setId($this->id);
-        $document->name = $this->name;
-        $document->street = $this->street;
+        $document->name     = $this->name;
+        $document->street   = $this->street;
     }
 
     /**
@@ -129,14 +129,13 @@ class MyModel extends CActiveRecord
      */
     public function parseElasticDocument(DocumentInterface $document)
     {
-        $this->id($document->getId());
-
         // You should always set the match score from the result document
         if ($document instanceof SearchResult)
             $this->setElasticScore($document->getScore());
 
-        $this->name = $document->name;
-        $this->street = $document->stree;
+        $this->id       = $document->getId();
+        $this->name     = $document->name;
+        $this->street   = $document->stree;
     }
 ```
 
@@ -196,10 +195,10 @@ $mapping = array(
     ),
 
 // Create a mapping
-$response = $client
-                ->put('myindex', array("Content-type" => "application/json"))
-                ->setBody(array('mapping' => $mapping))
-                ->send();
+$request = $client->put('myindex', array("Content-type" => "application/json"));
+$request->setBody(array('mapping' => $mapping));
+
+$response = $request->send();
 
 $result = $response->getBody();
 ```

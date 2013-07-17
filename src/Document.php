@@ -136,7 +136,7 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
      */
     public function __get($name)
     {
-        if (isset($this->_source[$name]))
+        if (array_key_exists($name, $this->_source))
             return $this->_source[$name];
         throw new \Exception(__CLASS__.' has no such property: '.$name);
     }
@@ -156,7 +156,7 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
      */
     public function __isset($name)
     {
-        return isset($this->_source[$name]);
+        return array_key_exists($name,$this->_source);
     }
 
     /**
@@ -207,7 +207,7 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
      */
     public function offsetExists($offset)
     {
-        return isset($this->_source[$offset]);
+        return array_key_exists($offset, $this->_source);
     }
 
     /**
