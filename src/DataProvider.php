@@ -90,6 +90,18 @@ class DataProvider extends CDataProvider
     }
 
     /**
+     * @return array the facets
+     */
+    public function getFacets()
+    {
+        if($this->resultSet===null) {
+            $this->fetchData();
+        }
+
+        return $this->resultSet->getFacets();
+    }
+
+    /**
      * @return array list of data items
      */
     protected function fetchData()
