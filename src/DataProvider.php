@@ -22,6 +22,11 @@ class DataProvider extends CDataProvider
     public $model;
 
     /**
+     * @var string|null optional name of model attribute to use a attribute key instead of the primary key
+     */
+    public $keyAttribute;
+
+    /**
      * @var Search the search parameters
      */
     protected $_search;
