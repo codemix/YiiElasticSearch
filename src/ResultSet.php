@@ -39,9 +39,8 @@ class ResultSet extends CComponent
      */
     public function getFacets()
     {
-        return $this->_raw['facets'];
+        return isset($this->_raw['facets']) ? $this->_raw['facets'] : array();
     }
-
 
     /**
      * @return SearchResult[] the search results
@@ -71,6 +70,9 @@ class ResultSet extends CComponent
         return $this->_raw['hits']['total'];
     }
 
+    /**
+     * @return array the raw elasticsearch result data
+     */
     public function getRaw()
     {
         return $this->_raw;
