@@ -129,7 +129,11 @@ class Connection extends ApplicationComponent
      */
     public function search(Search $search)
     {
-        $query = json_encode($search->toArray());
+        $data = array();
+        foreach($search->toArray() as $key=>$value) {
+            $data[$key] = ($value instanceof \CMap) ? $value->toArray() : $value;
+        }
+        $query = json_encode($data);
         $url = array();
         if ($search->index)
             $url[] = $this->indexPrefix.$search->index;
