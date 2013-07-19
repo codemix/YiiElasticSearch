@@ -8,7 +8,7 @@ namespace YiiElasticSearch;
  * This class is mainly an OO container for search parameters.
  * See http://www.elasticsearch.org/guide/reference/api/search/
  * for available parameters.
- *
+
  * You can set arbitrary properties:
  *
  *      $search = new YiiElasticSearch\Search;
@@ -166,6 +166,9 @@ class Search implements \ArrayAccess, \Countable
      */
     public function __set($name, $value)
     {
+        if(is_array($value)) {
+            $value = new \CMap($value);
+        }
         $this->data[$name] = $value;
     }
 
