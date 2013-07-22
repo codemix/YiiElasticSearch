@@ -20,12 +20,27 @@ class ConsoleCommand extends CConsoleCommand
     public $defaultAction = 'help';
 
     /**
-     * @var bool wether to supress any output from this command
+     * @var string name of model
+     */
+    public $model;
+
+    /**
+     * @var string name of index
+     */
+    public $index;
+
+    /**
+     * @var string name of type
+     */
+    public $type;
+
+    /**
+     * @var bool whether to supress any output from this command
      */
     public $quiet = false;
 
     /**
-     * @var bool wether to be more verbose
+     * @var bool whether to be more verbose
      */
     public $verbose = false;
 
@@ -44,15 +59,33 @@ DESCRIPTION
 
 ACTIONS
 
-  index --model=<name>
+  index --model=<model>
 
-    Add all models <name> to the index. This will replace any previous
-    entries for this model in the index.
+    Add all models <model> to the index. This will replace any previous
+    entries for this model in the index. Index and type will be auto-detected
+    from the model class unless --index or --type is set explicitely.
 
+  map --model=<model> --map=<filename>
+  map --index=<index> --map=<filename>
+
+    Create a mapping in the index specified with the <index> or implicitly
+    through the <model> parameter. The mapping must be available from a JSON
+    file in <filename> where the JSON must have this form:
+
+        {
+            "tweet" : {
+                "name" : {"type" : "string"},
+                ...
+            },
+            ...
+        }
+
+  list [--limit=10] [--offset=0]
   list [--model=<name>] [--limit=10] [--offset=0]
+  list [--index=<name>] [--type=<type>] [--limit=10] [--offset=0]
 
-    List all entries in elasticsearch. If a model is specified only entries
-    matching index and type of the model will be listed.
+    List all entries in elasticsearch. If a model or an index (optionally with
+    a type) is specified only entries matching index and type of the model will be listed.
 
   delete --model=<name> [--id=<id>]
 
@@ -68,20 +101,18 @@ EOD;
 
     /**
      * Index the given model in elasticsearch
-     *
-     * @param string $model name of the ActiveRecord class
      */
-    public function actionIndex($model)
+    public function actionIndex()
     {
         $n = 0;
-        $name   = $model;
-        $model  = CActiveRecord::model($name);
+
+        $model  = $this->getModel();
         $table  = $model->tableName();
         $count  = $model->count();
         $step   = $count > 5 ? floor($count/5) : 1;
         $index  = $model->elasticIndex;
 
-        $this->message("Adding $count '$name' records from table '$table' to index '$index'\n 0% ", false);
+        $this->message("Adding $count '{$this->model}' records from table '$table' to index '$index'\n 0% ", false);
 
         // We use a data reader to keep memory footprint low
         $reader = Yii::app()->db->createCommand("SELECT * FROM $table")->query();
@@ -103,29 +134,72 @@ EOD;
     }
 
     /**
+     * @param string $map the path to the JSON map file
+     * @param bool $noDelete whether to supress index deletion
+     */
+    public function actionMap($map,$noDelete=false)
+    {
+        $index      = $this->getIndex();
+        $file       = file_get_contents($map);
+        $mapping    = json_decode($file);
+        $client     = Yii::app()->elasticSearch->client;
+
+        if($mapping===null) {
+            $this->usageError("Invalid JSON in $map");
+        }
+
+        $body = json_encode(array(
+            'mappings' => $mapping,
+        ));
+
+        if($noDelete) {
+            $this->message("Skipped deletion of '$index'");
+        } else {
+            $this->message("Deleting '$index' ... ",false);
+            $this->performRequest($client->delete($index));
+            $this->message("done");
+        }
+
+        $this->performRequest($client->put($index, array("Content-type" => "application/json"))->setBody($body));
+
+        $this->message("Created mappings for '$index' from file in '$map'");
+    }
+
+
+    /**
      * List documents in elasticsearch
      *
-     * @param string|null $model the optional model name
      * @param int $limit how many documents to show. Default is 10.
      * @param int $offset at which document to start. Default is 0.
      */
-    public function actionList($model=null, $limit=10, $offset=0)
+    public function actionList($limit=10, $offset=0)
     {
         $search         = new Search;
         $search->size   = $limit;
         $search->from   = $offset;
 
-        if($model!==null) {
-            $name = $model;
-            $model = CActiveRecord::model($name);
+        if(($model = $this->getModel(false))!==null) {
             $search->index  = $model->elasticIndex;
             $search->type   = $model->elasticType;
+        } else {
+            if(($index = $this->getIndex(false))!==null) {
+                $search->index = $index;
+            }
+            if(($type = $this->getType(false))!==null) {
+                $search->type = $type;
+            }
         }
 
         $search->query = array(
             'match_all' => array(),
         );
-        $result = Yii::app()->elasticSearch->search($search);
+
+        try {
+            $result = Yii::app()->elasticSearch->search($search);
+        } catch (\CException $e) {
+           $this->message($e->getMessage());
+            Yii::app()->end(1);
+        }
 
         $this->message("Showing {$result->count} of {$result->total} found documents");
         $this->message('-------------------------------------------------------');
@@ -148,8 +222,7 @@ EOD;
         $type   = $model->elasticType;
         $url    = $index.'/'.$type. ($id===null ? '' : '/'.$id);
 
-        $request = Yii::app()->elasticSearch->client->delete($url);
-        $request->send();
+        $this->performRequest(Yii::app()->elasticSearch->client->delete($url));
 
         if($id===null) {
             $this->message("Deleted index $index");
@@ -171,7 +244,7 @@ EOD;
      * Output a message
      *
      * @param string $text message text
-     * @param bool $newline wether to append a newline. Default is true.
+     * @param bool $newline whether to append a newline. Default is true.
      */
     protected function message($text, $newline=true)
     {
@@ -211,5 +284,78 @@ EOD;
         } else {
             return $value;
         }
+    }
+
+    /**
+     * @param Guzzle\EntityEnclosingRequestInterface $request
+     */
+    protected function performRequest($request)
+    {
+        try {
+            $request->send();
+        } catch (\Guzzle\Http\Exception\BadResponseException $e) {
+            $body = $e->getResponse()->getBody(true);
+            if(($msg = json_decode($body))!==null) {
+                $this->message($msg->error);
+            } else {
+                $this->message($e->getMessage());
+            }
+            Yii::app()->end(1);
+        }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
+            $this->message($e->getResponse()->getBody(true));
+            Yii::app()->end(1);
+        }
+    }
+
+    /**
+     * @param bool $required whether a model is required
+     * @return CActiveRecord|null the model instance
+     */
+    protected function getModel($required=true)
+    {
+        if(!$this->model) {
+            if($required) {
+                $this->usageError("Model must be supplied with --model.");
+            } else {
+                return null;
+            }
+        }
+
+        return CActiveRecord::model($this->model);
+    }
+
+    /**
+     * @param bool $required whether a index is required
+     * @return string|null the index name as set with --index or implicitly through --model
+     */
+    protected function getIndex($required=true)
+    {
+        if(!$this->model && !$this->index) {
+            if($required) {
+                $this->usageError("Either --model or --index must be supplied.");
+            } else {
+                return null;
+            }
+        }
+
+        return $this->index ? $this->index : $this->getModel()->elasticIndex;
+    }
+
+    /**
+     * @param whether a type is required
+     * @return string|null the type name as set with --type or implicitly through --model
+     */
+    protected function getType($required=true)
+    {
+        if(!$this->model && !$this->type) {
+            if($required) {
+                $this->usageError("Either --model or --type must be supplied.");
+            } else {
+                return null;
+            }
+        }
+
+        return $this->type ? $this->type : $this->getModel()->elasticType;
     }
 }
