@@ -35,12 +35,12 @@ class ConsoleCommand extends CConsoleCommand
     public $type;
 
     /**
-     * @var bool wether to supress any output from this command
+     * @var bool whether to supress any output from this command
      */
     public $quiet = false;
 
     /**
-     * @var bool wether to be more verbose
+     * @var bool whether to be more verbose
      */
     public $verbose = false;
 
@@ -68,7 +68,7 @@ ACTIONS
   map --model=<model> --map=<filename>
   map --index=<index> --map=<filename>
 
-    Create a mapping in the index specified with the <index> or implicitely
+    Create a mapping in the index specified with the <index> or implicitly
     through the <model> parameter. The mapping must be available from a JSON
     file in <filename> where the JSON must have this form:
 
@@ -135,7 +135,7 @@ EOD;
 
     /**
      * @param string $map the path to the JSON map file
-     * @param bool $noDelete wether to supress index deletion
+     * @param bool $noDelete whether to supress index deletion
      */
     public function actionMap($map,$noDelete=false)
     {
@@ -244,7 +244,7 @@ EOD;
      * Output a message
      *
      * @param string $text message text
-     * @param bool $newline wether to append a newline. Default is true.
+     * @param bool $newline whether to append a newline. Default is true.
      */
     protected function message($text, $newline=true)
     {
@@ -309,7 +309,7 @@ EOD;
     }
 
     /**
-     * @param wether a model is required
+     * @param bool $required whether a model is required
      * @return CActiveRecord|null the model instance
      */
     protected function getModel($required=true)
@@ -326,8 +326,8 @@ EOD;
     }
 
     /**
-     * @param wether a index is required
-     * @return string|null the index name as set with --index or implicitely through --model
+     * @param bool $required whether a index is required
+     * @return string|null the index name as set with --index or implicitly through --model
      */
     protected function getIndex($required=true)
     {
@@ -343,8 +343,8 @@ EOD;
     }
 
     /**
-     * @param wether a type is required
-     * @return string|null the type name as set with --type or implicitely through --model
+     * @param whether a type is required
+     * @return string|null the type name as set with --type or implicitly through --model
      */
     protected function getType($required=true)
     {
