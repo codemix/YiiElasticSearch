@@ -59,11 +59,26 @@ DESCRIPTION
 
 ACTIONS
 
-  index --model=<name>
+  index --model=<model>
 
-    Add all models <name> to the index. This will replace any previous
+    Add all models <model> to the index. This will replace any previous
     entries for this model in the index. Index and type will be auto-detected
     from the model class unless --index or --type is set explicitely.
+
+  map --model=<model> --map=<filename>
+  map --index=<index> --map=<filename>
+
+    Create a mapping in the index specified with the <index> or implicitely
+    through the <model> parameter. The mapping must be available from a JSON
+    file in <filename> where the JSON must have this form:
+
+        {
+            "tweet" : {
+                "name" : {"type" : "string"},
+                ...
+            },
+            ...
+        }
 
   list [--limit=10] [--offset=0]
   list [--model=<name>] [--limit=10] [--offset=0]
@@ -119,6 +134,39 @@ EOD;
     }
 
     /**
+     * @param string $map the path to the JSON map file
+     * @param bool $noDelete wether to supress index deletion
+     */
+    public function actionMap($map,$noDelete=false)
+    {
+        $index      = $this->getIndex();
+        $file       = file_get_contents($map);
+        $mapping    = json_decode($file);
+        $client     = Yii::app()->elasticSearch->client;
+
+        if($mapping===null) {
+            $this->usageError("Invalid JSON in $map");
+        }
+
+        $body = json_encode(array(
+            'mappings' => $mapping,
+        ));
+
+        if($noDelete) {
+            $this->message("Skipped deletion of '$index'");
+        } else {
+            $this->message("Deleting '$index' ... ",false);
+            $this->performRequest($client->delete($index));
+            $this->message("done");
+        }
+
+        $this->performRequest($client->put($index, array("Content-type" => "application/json"))->setBody($body));
+
+        $this->message("Created mappings for '$index' from file in '$map'");
+    }
+
+
+    /**
      * List documents in elasticsearch
      *
      * @param int $limit how many documents to show. Default is 10.
@@ -145,7 +193,13 @@ EOD;
         $search->query = array(
             'match_all' => array(),
         );
-        $result = Yii::app()->elasticSearch->search($search);
+
+        try {
+            $result = Yii::app()->elasticSearch->search($search);
+        } catch (\CException $e) {
+           $this->message($e->getMessage());
+            Yii::app()->end(1);
+        }
 
         $this->message("Showing {$result->count} of {$result->total} found documents");
         $this->message('-------------------------------------------------------');
@@ -168,8 +222,7 @@ EOD;
         $type   = $model->elasticType;
         $url    = $index.'/'.$type. ($id===null ? '' : '/'.$id);
 
-        $request = Yii::app()->elasticSearch->client->delete($url);
-        $request->send();
+        $this->performRequest(Yii::app()->elasticSearch->client->delete($url));
 
         if($id===null) {
             $this->message("Deleted index $index");
@@ -230,6 +283,28 @@ EOD;
             return 'Array (...)';
         } else {
             return $value;
+        }
+    }
+
+    /**
+     * @param Guzzle\EntityEnclosingRequestInterface $request
+     */
+    protected function performRequest($request)
+    {
+        try {
+            $request->send();
+        } catch (\Guzzle\Http\Exception\BadResponseException $e) {
+            $body = $e->getResponse()->getBody(true);
+            if(($msg = json_decode($body))!==null) {
+                $this->message($msg->error);
+            } else {
+                $this->message($e->getMessage());
+            }
+            Yii::app()->end(1);
+        }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
+            $this->message($e->getResponse()->getBody(true));
+            Yii::app()->end(1);
         }
     }
 

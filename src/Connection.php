@@ -171,7 +171,15 @@ class Connection extends ApplicationComponent
             return $response;
         }
         catch (\Guzzle\Http\Exception\BadResponseException $e) {
-            throw new \Exception($e->getResponse()->getBody(true));
+            $body = $e->getResponse()->getBody(true);
+            if(($msg = json_decode($body))!==null) {
+                throw new \CException($msg->error);
+            } else {
+                throw new \CException($e);
+            }
+        }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
+            throw new \CException($e->getResponse()->getBody(true));
         }
     }
 }
