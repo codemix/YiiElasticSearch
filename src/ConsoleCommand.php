@@ -20,6 +20,21 @@ class ConsoleCommand extends CConsoleCommand
     public $defaultAction = 'help';
 
     /**
+     * @var string name of model
+     */
+    public $model;
+
+    /**
+     * @var string name of index
+     */
+    public $index;
+
+    /**
+     * @var string name of type
+     */
+    public $type;
+
+    /**
      * @var bool wether to supress any output from this command
      */
     public $quiet = false;
@@ -47,12 +62,15 @@ ACTIONS
   index --model=<name>
 
     Add all models <name> to the index. This will replace any previous
-    entries for this model in the index.
+    entries for this model in the index. Index and type will be auto-detected
+    from the model class unless --index or --type is set explicitely.
 
+  list [--limit=10] [--offset=0]
   list [--model=<name>] [--limit=10] [--offset=0]
+  list [--index=<name>] [--type=<type>] [--limit=10] [--offset=0]
 
-    List all entries in elasticsearch. If a model is specified only entries
-    matching index and type of the model will be listed.
+    List all entries in elasticsearch. If a model or an index (optionally with
+    a type) is specified only entries matching index and type of the model will be listed.
 
   delete --model=<name> [--id=<id>]
 
@@ -68,20 +86,18 @@ EOD;
 
     /**
      * Index the given model in elasticsearch
-     *
-     * @param string $model name of the ActiveRecord class
      */
-    public function actionIndex($model)
+    public function actionIndex()
     {
         $n = 0;
-        $name   = $model;
-        $model  = CActiveRecord::model($name);
+
+        $model  = $this->getModel();
         $table  = $model->tableName();
         $count  = $model->count();
         $step   = $count > 5 ? floor($count/5) : 1;
         $index  = $model->elasticIndex;
 
-        $this->message("Adding $count '$name' records from table '$table' to index '$index'\n 0% ", false);
+        $this->message("Adding $count '{$this->model}' records from table '$table' to index '$index'\n 0% ", false);
 
         // We use a data reader to keep memory footprint low
         $reader = Yii::app()->db->createCommand("SELECT * FROM $table")->query();
@@ -105,21 +121,25 @@ EOD;
     /**
      * List documents in elasticsearch
      *
-     * @param string|null $model the optional model name
      * @param int $limit how many documents to show. Default is 10.
      * @param int $offset at which document to start. Default is 0.
      */
-    public function actionList($model=null, $limit=10, $offset=0)
+    public function actionList($limit=10, $offset=0)
     {
         $search         = new Search;
         $search->size   = $limit;
         $search->from   = $offset;
 
-        if($model!==null) {
-            $name = $model;
-            $model = CActiveRecord::model($name);
+        if(($model = $this->getModel(false))!==null) {
             $search->index  = $model->elasticIndex;
             $search->type   = $model->elasticType;
+        } else {
+            if(($index = $this->getIndex(false))!==null) {
+                $search->index = $index;
+            }
+            if(($type = $this->getType(false))!==null) {
+                $search->type = $type;
+            }
         }
 
         $search->query = array(
@@ -211,5 +231,56 @@ EOD;
         } else {
             return $value;
         }
+    }
+
+    /**
+     * @param wether a model is required
+     * @return CActiveRecord|null the model instance
+     */
+    protected function getModel($required=true)
+    {
+        if(!$this->model) {
+            if($required) {
+                $this->usageError("Model must be supplied with --model.");
+            } else {
+                return null;
+            }
+        }
+
+        return CActiveRecord::model($this->model);
+    }
+
+    /**
+     * @param wether a index is required
+     * @return string|null the index name as set with --index or implicitely through --model
+     */
+    protected function getIndex($required=true)
+    {
+        if(!$this->model && !$this->index) {
+            if($required) {
+                $this->usageError("Either --model or --index must be supplied.");
+            } else {
+                return null;
+            }
+        }
+
+        return $this->index ? $this->index : $this->getModel()->elasticIndex;
+    }
+
+    /**
+     * @param wether a type is required
+     * @return string|null the type name as set with --type or implicitely through --model
+     */
+    protected function getType($required=true)
+    {
+        if(!$this->model && !$this->type) {
+            if($required) {
+                $this->usageError("Either --model or --type must be supplied.");
+            } else {
+                return null;
+            }
+        }
+
+        return $this->type ? $this->type : $this->getModel()->elasticType;
     }
 }
