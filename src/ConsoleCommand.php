@@ -45,6 +45,11 @@ class ConsoleCommand extends CConsoleCommand
     public $verbose = false;
 
     /**
+     * @var bool whether to only perform the command if target does not exist. Default is false.
+     */
+    public $skipExisting = false;
+
+    /**
      * @return string help for this command
      */
     public function getHelp()
@@ -59,14 +64,17 @@ DESCRIPTION
 
 ACTIONS
 
-  index --model=<model>
+  * index --model=<model> [--skipExisting]
 
     Add all models <model> to the index. This will replace any previous
     entries for this model in the index. Index and type will be auto-detected
     from the model class unless --index or --type is set explicitely.
+    If --skipExisting is used, no action is performed if there are already
+    documents indexed under this type.
 
-  map --model=<model> --map=<filename>
-  map --index=<index> --map=<filename>
+
+  * map --model=<model> --map=<filename> [--skipExisting]
+    map --index=<index> --map=<filename> [--skipExisting]
 
     Create a mapping in the index specified with the <index> or implicitly
     through the <model> parameter. The mapping must be available from a JSON
@@ -80,19 +88,25 @@ ACTIONS
             ...
         }
 
-  list [--limit=10] [--offset=0]
-  list [--model=<name>] [--limit=10] [--offset=0]
-  list [--index=<name>] [--type=<type>] [--limit=10] [--offset=0]
+    If --skipExisting is used, no action is performed if there's are already
+    a mapping for this index.
+
+
+  * list [--limit=10] [--offset=0]
+    list [--model=<name>] [--limit=10] [--offset=0]
+    list [--index=<name>] [--type=<type>] [--limit=10] [--offset=0]
 
     List all entries in elasticsearch. If a model or an index (optionally with
     a type) is specified only entries matching index and type of the model will be listed.
 
-  delete --model=<name> [--id=<id>]
+
+  * delete --model=<name> [--id=<id>]
 
     Delete a document from an index. If no <id> is specified the whole
     index will be deleted.
 
-  help
+
+  * help
 
     Show this help
 
@@ -111,6 +125,12 @@ EOD;
         $count  = $model->count();
         $step   = $count > 5 ? floor($count/5) : 1;
         $index  = $model->elasticIndex;
+        $type   = $model->elasticType;
+
+        if($this->skipExisting && $this->exists("$index/$type")) {
+            $this->message("'$index/$type' exists. Skipping index command.");
+            return;
+        }
 
         $this->message("Adding $count '{$this->model}' records from table '$table' to index '$index'\n 0% ", false);
 
@@ -137,12 +157,23 @@ EOD;
      * @param string $map the path to the JSON map file
      * @param bool $noDelete whether to supress index deletion
      */
-    public function actionMap($map,$noDelete=false)
+    public function actionMap($map)
     {
         $index      = $this->getIndex();
         $file       = file_get_contents($map);
         $mapping    = json_decode($file);
         $client     = Yii::app()->elasticSearch->client;
+
+        if($this->exists("$index/_mapping",'GET')) {
+            if($this->skipExisting) {
+                $this->message("Mapping for '$index' exists. Skipping map command.");
+                return;
+            } else {
+                $this->message("Deleting '$index' ... ",false);
+                $this->performRequest($client->delete($index));
+                $this->message("done");
+            }
+        }
 
         if($mapping===null) {
             $this->usageError("Invalid JSON in $map");
@@ -151,14 +182,6 @@ EOD;
         $body = json_encode(array(
             'mappings' => $mapping,
         ));
-
-        if($noDelete) {
-            $this->message("Skipped deletion of '$index'");
-        } else {
-            $this->message("Deleting '$index' ... ",false);
-            $this->performRequest($client->delete($index));
-            $this->message("done");
-        }
 
         $this->performRequest($client->put($index, array("Content-type" => "application/json"))->setBody($body));
 
@@ -357,5 +380,22 @@ EOD;
         }
 
         return $this->type ? $this->type : $this->getModel()->elasticType;
+    }
+
+    /**
+     * @param string $url to test for existance
+     * @return bool whether the given resource exists
+     */
+    protected function exists($url,$method='head')
+    {
+        $client = Yii::app()->elasticSearch->client;
+        try {
+            $client->{$method}($url)->send();
+            return true;
+        }
+        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
+
+        return false;
     }
 }
