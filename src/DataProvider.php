@@ -56,16 +56,25 @@ class DataProvider extends CDataProvider
     }
 
     /**
-     * @param \YiiElasticSearch\Search $search
+     * @param \YiiElasticSearch\Search|array $search a Search object or an array with search parameters
      */
     public function setSearch($search)
     {
-        if (is_array($search))
+        if (is_array($search)) {
             $search = new Search(
                 $this->model->elasticIndex,
                 $this->model->elasticType,
                 $search
             );
+        }
+
+        if(!$search->index) {
+            $search->index = $this->model->elasticIndex;
+        }
+
+        if(!$search->type) {
+            $search->type = $this->model->elasticType;
+        }
 
         $this->_search = $search;
     }

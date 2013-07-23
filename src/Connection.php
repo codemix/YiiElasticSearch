@@ -166,6 +166,7 @@ class Connection extends ApplicationComponent
                 Yii::beginProfile($profileKey);
             }
             $response = $async ? $request->send() : json_decode($request->send()->getBody(true), true);
+            Yii::trace("Sent request to '{$request->getUrl()}'", 'application.elastic.connection');
             if ($this->enableProfiling)
                 Yii::endProfile($profileKey);
             return $response;
