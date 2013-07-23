@@ -45,7 +45,7 @@ class ConsoleCommand extends CConsoleCommand
     public $verbose = false;
 
     /**
-     * @var bool wether to only perform the command if target does not exist. Default is false.
+     * @var bool whether to only perform the command if target does not exist. Default is false.
      */
     public $skipExisting = false;
 
@@ -384,7 +384,7 @@ EOD;
 
     /**
      * @param string $url to test for existance
-     * @return bool wether the given resource exists
+     * @return bool whether the given resource exists
      */
     protected function exists($url,$method='head')
     {

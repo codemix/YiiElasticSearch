@@ -152,7 +152,7 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
 
     /**
      * @param string $name the field name
-     * @return bool wether the document has a field with the given name
+     * @return bool whether the document has a field with the given name
      */
     public function __isset($name)
     {
