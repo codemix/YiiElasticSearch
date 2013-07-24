@@ -190,10 +190,9 @@ class Connection extends ApplicationComponent
      */
     public function typeEmpty($url)
     {
-        $client = Yii::app()->elasticSearch->client;
         $url = '/'.trim($url,'/').'/_count';
         try {
-            $response = $client->get($url)->send()->json();
+            $response = $this->getClient()->get($url)->send()->json();
             return !isset($response['count']) || !$response['count'];
         }
         catch (\Guzzle\Http\Exception\BadResponseException $e) { }
@@ -208,10 +207,9 @@ class Connection extends ApplicationComponent
      */
     public function mappingExists($url)
     {
-        $client = Yii::app()->elasticSearch->client;
         $url = '/'.trim($url,'/').'/_mapping';
         try {
-            $response = $client->get($url)->send();
+            $response = $this->getClient()->get($url)->send();
             return true;
         }
         catch (\Guzzle\Http\Exception\BadResponseException $e) { }
