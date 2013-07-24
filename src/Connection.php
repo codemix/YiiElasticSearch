@@ -183,4 +183,38 @@ class Connection extends ApplicationComponent
             throw new \CException($e->getResponse()->getBody(true));
         }
     }
+
+    /**
+     * @param string $url of resource to check e.g. /twitter/tweet
+     * @return bool whether there are documents for this type
+     */
+    public function typeEmpty($url)
+    {
+        $url = '/'.trim($url,'/').'/_count';
+        try {
+            $response = $this->getClient()->get($url)->send()->json();
+            return !isset($response['count']) || !$response['count'];
+        }
+        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
+
+        return false;
+    }
+
+    /**
+     * @param string $url the resource URL to check e.g. /twitter or /twitter/tweet
+     * @return bool whether a mapping exists for the given resource
+     */
+    public function mappingExists($url)
+    {
+        $url = '/'.trim($url,'/').'/_mapping';
+        try {
+            $response = $this->getClient()->get($url)->send();
+            return true;
+        }
+        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
+
+        return false;
+    }
 }

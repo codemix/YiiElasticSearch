@@ -127,8 +127,8 @@ EOD;
         $index  = $model->elasticIndex;
         $type   = $model->elasticType;
 
-        if($this->skipExisting && $this->exists("$index/$type")) {
-            $this->message("'$index/$type' exists. Skipping index command.");
+        if($this->skipExisting && !Yii::app()->elasticSearch->typeEmpty("$index/$type")) {
+            $this->message("'$index/$type' is not empty. Skipping index command.");
             return;
         }
 
@@ -162,15 +162,15 @@ EOD;
         $index      = $this->getIndex();
         $file       = file_get_contents($map);
         $mapping    = json_decode($file);
-        $client     = Yii::app()->elasticSearch->client;
+        $elastic    = Yii::app()->elasticSearch;
 
-        if($this->exists("$index/_mapping",'GET')) {
+        if($elastic->mappingExists($index)) {
             if($this->skipExisting) {
                 $this->message("Mapping for '$index' exists. Skipping map command.");
                 return;
             } else {
                 $this->message("Deleting '$index' ... ",false);
-                $this->performRequest($client->delete($index));
+                $this->performRequest($elastic->client->delete($index));
                 $this->message("done");
             }
         }
@@ -380,22 +380,5 @@ EOD;
         }
 
         return $this->type ? $this->type : $this->getModel()->elasticType;
-    }
-
-    /**
-     * @param string $url to test for existance
-     * @return bool whether the given resource exists
-     */
-    protected function exists($url,$method='head')
-    {
-        $client = Yii::app()->elasticSearch->client;
-        try {
-            $client->{$method}($url)->send();
-            return true;
-        }
-        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
-        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
-
-        return false;
     }
 }
