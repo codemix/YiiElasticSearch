@@ -183,7 +183,7 @@ EOD;
             'mappings' => $mapping,
         ));
 
-        $this->performRequest($client->put($index, array("Content-type" => "application/json"))->setBody($body));
+        $this->performRequest($elastic->client->put($index, array("Content-type" => "application/json"))->setBody($body));
 
         $this->message("Created mappings for '$index' from file in '$map'");
     }
