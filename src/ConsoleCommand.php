@@ -127,7 +127,7 @@ EOD;
         $index  = $model->elasticIndex;
         $type   = $model->elasticType;
 
-        if($this->skipExisting && !$this->typeEmpty("$index/$type")) {
+        if($this->skipExisting && !Yii::app()->elasticSearch->typeEmpty("$index/$type")) {
             $this->message("'$index/$type' is not empty. Skipping index command.");
             return;
         }
@@ -162,15 +162,15 @@ EOD;
         $index      = $this->getIndex();
         $file       = file_get_contents($map);
         $mapping    = json_decode($file);
-        $client     = Yii::app()->elasticSearch->client;
+        $elastic    = Yii::app()->elasticSearch;
 
-        if($this->mappingExists($index)) {
+        if($elastic->mappingExists($index)) {
             if($this->skipExisting) {
                 $this->message("Mapping for '$index' exists. Skipping map command.");
                 return;
             } else {
                 $this->message("Deleting '$index' ... ",false);
-                $this->performRequest($client->delete($index));
+                $this->performRequest($elastic->client->delete($index));
                 $this->message("done");
             }
         }
@@ -380,41 +380,5 @@ EOD;
         }
 
         return $this->type ? $this->type : $this->getModel()->elasticType;
-    }
-
-    /**
-     * @param string $url of resource to check
-     * @return bool whether there are documents for this type
-     */
-    protected function typeEmpty($url)
-    {
-        $client = Yii::app()->elasticSearch->client;
-        $url = '/'.trim($url,'/').'/_count';
-        try {
-            $response = $client->get($url)->send()->json();
-            return !isset($response['count']) || !$response['count'];
-        }
-        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
-        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
-
-        return false;
-    }
-
-    /**
-     * @param string $url the resource URL to check
-     * @return bool whether a mapping exists for the given resource
-     */
-    protected function mappingExists($url)
-    {
-        $client = Yii::app()->elasticSearch->client;
-        $url = '/'.trim($url,'/').'/_mapping';
-        try {
-            $response = $client->get($url)->send();
-            return true;
-        }
-        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
-        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
-
-        return false;
     }
 }

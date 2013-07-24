@@ -183,4 +183,40 @@ class Connection extends ApplicationComponent
             throw new \CException($e->getResponse()->getBody(true));
         }
     }
+
+    /**
+     * @param string $url of resource to check e.g. /twitter/tweet
+     * @return bool whether there are documents for this type
+     */
+    public function typeEmpty($url)
+    {
+        $client = Yii::app()->elasticSearch->client;
+        $url = '/'.trim($url,'/').'/_count';
+        try {
+            $response = $client->get($url)->send()->json();
+            return !isset($response['count']) || !$response['count'];
+        }
+        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
+
+        return false;
+    }
+
+    /**
+     * @param string $url the resource URL to check e.g. /twitter or /twitter/tweet
+     * @return bool whether a mapping exists for the given resource
+     */
+    public function mappingExists($url)
+    {
+        $client = Yii::app()->elasticSearch->client;
+        $url = '/'.trim($url,'/').'/_mapping';
+        try {
+            $response = $client->get($url)->send();
+            return true;
+        }
+        catch (\Guzzle\Http\Exception\BadResponseException $e) { }
+        catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) { }
+
+        return false;
+    }
 }
