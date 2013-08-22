@@ -303,7 +303,16 @@ EOD;
     protected function parseValue($value)
     {
         if(is_array($value)) {
-            return 'Array (...)';
+            $values = '[';
+            if(isset($value[0])) {
+                $values .= $this->parseValue($value[0]);
+            }
+            if(isset($value[1])) {
+                $values .= ',...]';
+            } else {
+                $values .= ']';
+            }
+            return $values;
         } else {
             return $value;
         }
