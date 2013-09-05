@@ -132,6 +132,11 @@ class DataProvider extends CDataProvider
                 $model->parseElasticDocument($result);
                 $this->fetchedData[] = $model;
             }
+
+            if($pagination!==false)
+            {
+                $pagination->setItemCount($this->getTotalItemCount());
+            }
         }
         return $this->fetchedData;
     }
