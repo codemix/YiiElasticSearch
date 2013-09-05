@@ -14,7 +14,7 @@ Add the following to your application config:
 
 ```php
 'aliases' => array(
-    'YiiElasticSearch' => 'application.vendor.phpnode.yiielasticsearch.src',
+    'YiiElasticSearch' => 'application.vendor.codemix.yiielasticsearch.src',
 ),
 'components' => array(
     'elasticSearch' => array(
