@@ -118,6 +118,7 @@ class DataProvider extends CDataProvider
         if($this->fetchedData===null) {
             $search = $this->_search;
             if (($pagination = $this->getPagination()) !== false) {
+                $pagination->validateCurrentPage = false;
                 $search['from'] = $pagination->getOffset();
                 $search['size'] = $pagination->pageSize;
             }
