@@ -60,7 +60,7 @@ USAGE
 
 DESCRIPTION
   This is the maintenance command for the elasticsearch component. It
-  allows to manage or list entries in the elasticsearch index.
+  provides utilities to manage or list entries in the elasticsearch index.
 
 ACTIONS
 
@@ -82,8 +82,9 @@ ACTIONS
 
         {
             "tweet" : {
-                "name" : {"type" : "string"},
-                ...
+                "properties": {
+                    "name" : {"type" : "string"},
+                    ...
             },
             ...
         }

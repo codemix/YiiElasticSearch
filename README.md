@@ -219,24 +219,44 @@ what's going on in your index. To configure it, add this to your `console.php` c
 This will allow you to use `yiic elastic` on the console. Here's the command help:
 
 ```
-USAGE
-  yiic elastic [action] [parameter]
-
-DESCRIPTION
-  This is the maintenance command for the elasticsearch component. It
-  allows to manage or list entries in the elasticsearch index.
-
 ACTIONS
 
-  index --model=<name>
+  index --model=<model> [--skipExisting]
 
-    Add all models <name> to the index. This will replace any previous
-    entries for this model in the index.
+    Add all models <model> to the index. This will replace any previous
+    entries for this model in the index. Index and type will be auto-detected
+    from the model class unless --index or --type is set explicitely.
+    If --skipExisting is used, no action is performed if there are already
+    documents indexed under this type.
 
+
+  map --model=<model> --map=<filename> [--skipExisting]
+  map --index=<index> --map=<filename> [--skipExisting]
+
+    Create a mapping in the index specified with the <index> or implicitly
+    through the <model> parameter. The mapping must be available from a JSON
+    file in <filename> where the JSON must have this form:
+
+        {
+            "tweet" : {
+                "properties": {
+                    "name" : {"type" : "string"},
+                    ...
+            },
+            ...
+        }
+
+    If --skipExisting is used, no action is performed if there's are already
+    a mapping for this index.
+
+
+  list [--limit=10] [--offset=0]
   list [--model=<name>] [--limit=10] [--offset=0]
+  list [--index=<name>] [--type=<type>] [--limit=10] [--offset=0]
 
-    List all entries in elasticsearch. If a model is specified only entries
-    matching index and type of the model will be listed.
+    List all entries in elasticsearch. If a model or an index (optionally with
+    a type) is specified only entries matching index and type of the model will be listed.
+
 
   delete --model=<name> [--id=<id>]
 
@@ -246,5 +266,5 @@ ACTIONS
   help
 
     Show this help
-``````
+```
 
