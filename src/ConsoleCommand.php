@@ -64,13 +64,16 @@ DESCRIPTION
 
 ACTIONS
 
-  * index --model=<model> [--skipExisting]
+  * index --model=<model> [--skipExisting] [--deleteType]
 
     Add all models <model> to the index. This will replace any previous
     entries for this model in the index. Index and type will be auto-detected
     from the model class unless --index or --type is set explicitely.
     If --skipExisting is used, no action is performed if there are already
     documents indexed under this type.
+    If --deleteType is used, the the model's type will be deleted before indexing.
+    After deleting type, indexing works only if automatic index creation is enabled
+    in elasticsearch, mapping is also lost.
 
 
   * map --model=<model> --map=<filename> [--skipExisting]
@@ -117,7 +120,7 @@ EOD;
     /**
      * Index the given model in elasticsearch
      */
-    public function actionIndex()
+    public function actionIndex($deleteType=false)
     {
         $n = 0;
 
@@ -127,6 +130,16 @@ EOD;
         $step   = $count > 5 ? floor($count/5) : 1;
         $index  = $model->elasticIndex;
         $type   = $model->elasticType;
+
+        /**
+         * If $deleteType is true we delete the type before indexing.
+         * After deleting type, indexing works only if automatic index creation is enabled, also mapping is lost.
+         * Information about auto index creation: http://www.elasticsearch.org/guide/reference/api/index_/1
+         */
+        if ($deleteType) {
+            $this->message("Type '$index/$type' deleted.");
+            $this->performRequest(Yii::app()->elasticSearch->client->delete("$index/$type"));
+        }
 
         if($this->skipExisting && !Yii::app()->elasticSearch->typeEmpty("$index/$type")) {
             $this->message("'$index/$type' is not empty. Skipping index command.");
