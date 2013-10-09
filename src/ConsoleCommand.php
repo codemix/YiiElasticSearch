@@ -104,10 +104,13 @@ ACTIONS
     a type) is specified only entries matching index and type of the model will be listed.
 
 
-  * delete --model=<name> [--id=<id>]
+  * delete --model=<model> [--id=<id>]
+    delete --index=<index>
 
-    Delete a document from an index. If no <id> is specified the whole
-    index will be deleted.
+    Delete a document, type or the whole index.
+    Document is deleted if <model> and <id> is specified.
+    A type is deleted if only <model> is specified.
+    If <index> is specified the whole index is deleted.
 
 
   * help
@@ -246,27 +249,35 @@ EOD;
     }
 
     /**
-     * Delete a document or a complete index from elasticsearch
+     * Delete a document, type or a complete index from elasticsearch
      *
-     * @param string $model name of the ActiveRecord to delete from the index
      * @param int|null $id of the record to delete. Optional.
      */
-    public function actionDelete($model,$id=null)
+    public function actionDelete($id=null)
     {
-        $name   = $model;
-        $model  = CActiveRecord::model($name);
-        $index  = $model->elasticIndex;
-        $type   = $model->elasticType;
-        $url    = $index.'/'.$type. ($id===null ? '' : '/'.$id);
+        $urlParts = array();
 
-        $this->performRequest(Yii::app()->elasticSearch->client->delete($url));
+        if ($this->model) { // Delete a document or a type
+            $model = $this->getModel(true);
+            $urlParts[] = $model->elasticIndex;
+            $urlParts[] = $model->elasticType;
 
-        if($id===null) {
-            $this->message("Deleted index $index");
-        } else {
-            $this->message("Deleted ID $id from index $index");
+            if ($id) {
+                $urlParts[] = $id;
+                $this->message("Deleting #{$id} document from '{$model->elasticIndex}/{$model->elasticType}': ", false);
+            } else {
+                $this->message("Deleting '{$model->elasticType}' type from index '{$model->elasticIndex}': ", false);
+            }
+
+        } else { // Delete a whole index
+            $index = $this->getIndex(true);
+            $urlParts[] = $index;
+            $this->message("Deleting index '{$index}': ", false);
         }
 
+        $this->performRequest(Yii::app()->elasticSearch->client->delete(implode('/', $urlParts)));
+
+        $this->message("done");
     }
 
     /**
