@@ -130,6 +130,7 @@ class DataProvider extends CDataProvider
             $modelClass = get_class($this->model);
             foreach($this->resultSet->getResults() as $result) {
                 $model = new $modelClass;
+                $model->setIsNewRecord(false);
                 $model->parseElasticDocument($result);
                 $this->fetchedData[] = $model;
             }
