@@ -131,7 +131,7 @@ EOD;
         $table  = $model->tableName();
         $count  = $model->count();
         $step   = $count > 5 ? floor($count/5) : 1;
-        $index  = $model->elasticIndex;
+        $index  = Yii::app()->elasticSearch->indexPrefix.$model->elasticIndex;
         $type   = $model->elasticType;
 
         /**
@@ -176,7 +176,7 @@ EOD;
      */
     public function actionMap($map)
     {
-        $index      = $this->getIndex();
+        $index      = $this->getIndex(true, true);
         $file       = file_get_contents($map);
         $mapping    = json_decode($file);
         $elastic    = Yii::app()->elasticSearch;
@@ -217,16 +217,19 @@ EOD;
         $search         = new Search;
         $search->size   = $limit;
         $search->from   = $offset;
-
         if(($model = $this->getModel(false))!==null) {
-            $search->index  = $model->elasticIndex;
+            $search->index  = $model->elasticIndex; // use unprefixed index
             $search->type   = $model->elasticType;
+            $_i = Yii::app()->elasticSearch->indexPrefix.$search->index;
+            $this->message("Index: {$_i} Type: {$search->type}"); // prefixed index will be used for search by connection
         } else {
-            if(($index = $this->getIndex(false))!==null) {
+            if(($index = $this->getIndex(false))!==null) { // use unprefixed index
                 $search->index = $index;
+                $this->message("Index: {$this->getIndex(false, true)}"); // prefixed index will be used for search by connection
             }
             if(($type = $this->getType(false))!==null) {
                 $search->type = $type;
+                $this->message("Type: {$search->type}");
             }
         }
 
@@ -259,18 +262,18 @@ EOD;
 
         if ($this->model) { // Delete a document or a type
             $model = $this->getModel(true);
-            $urlParts[] = $model->elasticIndex;
+            $index = $urlParts[] = Yii::app()->elasticSearch->indexPrefix.$model->elasticIndex;
             $urlParts[] = $model->elasticType;
 
             if ($id) {
                 $urlParts[] = $id;
-                $this->message("Deleting #{$id} document from '{$model->elasticIndex}/{$model->elasticType}': ", false);
+                $this->message("Deleting #{$id} document from '{$index}/{$model->elasticType}': ", false);
             } else {
-                $this->message("Deleting '{$model->elasticType}' type from index '{$model->elasticIndex}': ", false);
+                $this->message("Deleting '{$model->elasticType}' type from index '{$index}': ", false);
             }
 
         } else { // Delete a whole index
-            $index = $this->getIndex(true);
+            $index = $this->getIndex(true, true);
             $urlParts[] = $index;
             $this->message("Deleting index '{$index}': ", false);
         }
@@ -308,7 +311,7 @@ EOD;
      */
     protected function renderDocument($document)
     {
-        $this->message("Index   : {$document->getIndex()}");
+        $this->message("Index   : {$document->getIndex(true,true)}");
         $this->message("Type    : {$document->getType()}");
         $this->message("ID      : {$document->getId()}");
         if($this->verbose) {
@@ -384,9 +387,9 @@ EOD;
 
     /**
      * @param bool $required whether a index is required
-     * @return string|null the index name as set with --index or implicitly through --model
+     * @return string|null the prefix and index name as set with --index or implicitly through --model
      */
-    protected function getIndex($required=true)
+    protected function getIndex($required=true, $withPrefix=false)
     {
         if(!$this->model && !$this->index) {
             if($required) {
@@ -395,8 +398,9 @@ EOD;
                 return null;
             }
         }
+        $prefix = ($withPrefix) ? Yii::app()->elasticSearch->indexPrefix : '';
 
-        return $this->index ? $this->index : $this->getModel()->elasticIndex;
+        return $this->index ? $prefix.$this->index : $prefix.$this->getModel()->elasticIndex;
     }
 
     /**
