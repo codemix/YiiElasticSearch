@@ -1,5 +1,3 @@
-# Warning - don't use this yet. I haven't even tested it at all.
-
 # YiiElasticSearch
 
 Elastic Search client for Yii.
