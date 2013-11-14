@@ -1,5 +1,3 @@
-# Warning - don't use this yet. I haven't even tested it at all.
-
 # YiiElasticSearch
 
 Elastic Search client for Yii.
@@ -13,9 +11,6 @@ Install via composer, requires php >= 5.3
 Add the following to your application config:
 
 ```php
-'aliases' => array(
-    'YiiElasticSearch' => 'application.vendor.codemix.yiielasticsearch.src',
-),
 'components' => array(
     'elasticSearch' => array(
         'class' => 'YiiElasticSearch\Connection',
