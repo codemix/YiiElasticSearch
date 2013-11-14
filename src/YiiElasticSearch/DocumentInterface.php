@@ -22,7 +22,7 @@ interface DocumentInterface
     public function getIndex();
 
     /**
-     * @param string the name of the index that this document is stored in, including any indexPrefix
+     * @return string the name of the index that this document is stored in, including any indexPrefix
      */
     public function getType();
 
@@ -30,6 +30,11 @@ interface DocumentInterface
      * @return mixed the ID of this document in the elasticsearch index
      */
     public function getId();
+
+    /**
+     * @param mixed $id the ID of this document in the elasticsearch index
+     */
+    public function setId($id);
 
     /**
      * @return array the data that should be indexed

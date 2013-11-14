@@ -9,6 +9,11 @@ use \Yii as Yii;
  * This behavior can be attached to an ActiveRecord to automatically
  * index the record in elasticsearch.
  *
+ * @property Connection $elasticConnection
+ * @property string $elasticIndex
+ * @property string $elasticType
+ * @property string $elasticScore
+ *
  * @author Charles Pick <charles.pick@gmail.com>
  * @licence MIT
  * @package YiiElasticSearch
@@ -72,7 +77,7 @@ class SearchableBehavior extends CActiveRecordBehavior
     }
 
     /**
-     * @param float how much this record is relevant to the search query. Do not set manually.
+     * @param float $score how much this record is relevant to the search query. Do not set manually.
      */
     public function setElasticScore($score)
     {

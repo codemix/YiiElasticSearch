@@ -217,4 +217,24 @@ class Connection extends ApplicationComponent
 
         return false;
     }
+
+    /**
+     * Escapes the following terms:
+     * + - && || ! ( ) { } [ ] ^ " ~ * ? : \
+     *
+     * @param $term
+     * @return string
+     * @link http://lucene.apache.org/core/3_4_0/queryparsersyntax.html#Escaping%20Special%20Characters
+     */
+    public function escape($term)
+    {
+        $result = $term;
+        // \ escaping has to be first, otherwise escaped later once again
+        $chars = array('\\', '+', '/', '-', '&&', '||', '!', '(', ')', '{', '}', '[', ']', '^', '"', '~', '*', '?', ':');
+
+        foreach ($chars as $char) {
+            $result = str_replace($char, '\\' . $char, $result);
+        }
+        return trim($result);
+    }
 }

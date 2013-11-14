@@ -104,7 +104,7 @@ class Document implements DocumentInterface, \ArrayAccess, \Countable, \Iterator
     }
 
     /**
-     * @param mixed the ID of this document in the elasticsearch index
+     * @param mixed $id the ID of this document in the elasticsearch index
      */
     public function setId($id)
     {
