@@ -151,10 +151,9 @@ EOD;
 
         $this->message("Adding $count '{$this->model}' records from table '$table' to index '$index'\n 0% ", false);
 
-        // We use a data reader to keep memory footprint low
-        $reader = Yii::app()->db->createCommand("SELECT * FROM $table")->query();
-        while(($row = $reader->read())!==false) {
-            $record = $model->populateRecord($row);
+        $provider = new CActiveDataProvider($model);
+        $iterator = new CDataProviderIterator($provider);
+        foreach($iterator as $record) {
             $record->indexElasticDocument();
             $n++;
 
