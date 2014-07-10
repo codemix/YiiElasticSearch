@@ -151,8 +151,8 @@ EOD;
 
         $this->message("Adding $count '{$this->model}' records from table '$table' to index '$index'\n 0% ", false);
 
-        $provider = new CActiveDataProvider($model);
-        $iterator = new CDataProviderIterator($provider);
+        $provider = new \CActiveDataProvider($model);
+        $iterator = new \CDataProviderIterator($provider);
         foreach($iterator as $record) {
             $record->indexElasticDocument();
             $n++;
