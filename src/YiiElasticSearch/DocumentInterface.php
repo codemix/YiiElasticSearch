@@ -10,7 +10,6 @@ namespace YiiElasticSearch;
  */
 interface DocumentInterface
 {
-
     /**
      * @return Connection the elasticsearch connection to use for this document
      */
@@ -27,6 +26,16 @@ interface DocumentInterface
     public function getType();
 
     /**
+     * @return mixed ID of this document's parent document in the elasticsearch index
+     */
+    public function getParent();
+
+    /**
+     * @param mixed $parent ID of this document's parent document in the elasticsearch index
+     */
+    public function setParent($parent);
+
+    /**
      * @return mixed the ID of this document in the elasticsearch index
      */
     public function getId();
@@ -40,4 +49,9 @@ interface DocumentInterface
      * @return array the data that should be indexed
      */
     public function getSource();
+
+    /**
+     * @return string the url of this document
+     */
+    public function getUrl();
 }
