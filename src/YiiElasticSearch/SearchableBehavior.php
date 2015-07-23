@@ -21,6 +21,14 @@ use \Yii as Yii;
 class SearchableBehavior extends CActiveRecordBehavior
 {
     /**
+     * Help to implement index versioning
+     * @var null
+     */
+    static public $indexPostfix = null;
+
+    const INDEX_SEPARATOR = '_';
+
+    /**
      * @var bool whether to automatically index and delete documents in elastic search. Default is true.
      */
     public $elasticAutoIndex = true;
@@ -34,6 +42,11 @@ class SearchableBehavior extends CActiveRecordBehavior
      * @var float the document score
      */
     protected $_score;
+
+    /**
+     * @var string
+     */
+    public $mapping;
 
     /**
      * @return Connection the elasticsearch connection to use for the record
@@ -56,7 +69,31 @@ class SearchableBehavior extends CActiveRecordBehavior
      */
     public function getElasticIndex()
     {
-        return preg_replace('/[^a-z0-9]/','',strtolower(Yii::app()->name));
+        return $this->decorateElasticIndex(
+            preg_replace('/[^a-z0-9]/','',strtolower(Yii::app()->name))
+        );
+    }
+
+    /**
+     * @return array the mapping of the model.
+     */
+    public function getElasticMapping()
+    {
+        return $this->mapping;
+    }
+
+    /**
+     * Ads version postfix to the index
+     *
+     * @param $index
+     * @return string
+     */
+    public function decorateElasticIndex($index)
+    {
+        if (self::$indexPostfix) {
+            $index .= self::INDEX_SEPARATOR . self::$indexPostfix;
+        }
+        return $index;
     }
 
     /**
