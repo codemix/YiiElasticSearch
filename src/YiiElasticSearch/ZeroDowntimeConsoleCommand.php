@@ -288,7 +288,7 @@ EOH;
                 }
 
                 // Change alias
-                if ($updateAlias) {
+                if ($updateAlias && $updateAlias!=='false') {
                     $this->actionChangeAlias($versionedIndex, $mainIndex, $currentIndex);
                 }
 
@@ -305,7 +305,7 @@ EOH;
         if ($deleteIndexes && $deleteIndexes!=='false' && count($indexesToDelete)) {
             $this->actionDeleteIndex(array_keys($indexesToDelete));
         } elseif ($indexesToDelete) {
-            echo "Not dropping the following indexes:\n";
+            echo "Not deleting the following indexes:\n";
             foreach(array_keys($indexesToDelete) as $index) {
                 echo "  $index\n";
             }
@@ -446,9 +446,9 @@ EOH;
 
         $data = array("actions"=>array());
 
-        echo "  Change alias: $from -> $to";
+        echo "  Adding alias: $from -> $to";
         if ($old) {
-            echo ", also delete: $old";
+            echo ", also remove: $old";
             $data["actions"][] = array("remove"=>array("alias"=>$to, "index"=>$old));
         }
         $data["actions"][] = array("add"=>array("alias"=>$to, "index"=>$from));
