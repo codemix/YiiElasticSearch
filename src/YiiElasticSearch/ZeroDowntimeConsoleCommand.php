@@ -113,7 +113,7 @@ EOH;
         $elastic = \Yii::app()->elasticSearch;
 
         $status = $this->performRequest($elastic->client->get('/_status', $this->requestOptions));
-        $aliases = $this->performRequest($elastic->client->get('/_alias', $this->requestOptions));
+        $aliases = $this->performRequest($elastic->client->get('/_alias', $this->requestOptions), array(404));
 
         $models = explode(',', $models);
 
@@ -203,7 +203,7 @@ EOH;
         $indexesToDelete = array();
 
         $status = $this->performRequest($elastic->client->get('/_status', $this->requestOptions));
-        $aliases = $this->performRequest($elastic->client->get('/_alias', $this->requestOptions));
+        $aliases = $this->performRequest($elastic->client->get('/_alias', $this->requestOptions), array(404));
         $mappings = $this->performRequest($elastic->client->get('/_mapping', $this->requestOptions));
 
         foreach($models as $modelName) {
@@ -319,20 +319,23 @@ EOH;
      * @see YiiElasticSearch\ConsoleCommand::performRequest
      * @return mixed
      */
-    protected function performRequest($request)
+    protected function performRequest($request, $allowErrorCodes=array())
     {
         try {
             $response = $request->send();
             return json_decode($response->getBody(true), true);
         } catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
-            echo $e->getResponse()->getBody(true);
-
+            if (in_array($e->getResponse()->getStatusCode(), $allowErrorCodes)) {
+                return array();
+            }
+            echo $e->getResponse()->getBody(true), "\n";
         } catch (\Guzzle\Http\Exception\BadResponseException $e) {
             $body = $e->getResponse()->getBody(true);
+
             if(($msg = json_decode($body))!==null) {
-                echo $msg->error;
+                echo $msg->error, "\n";;
             } else {
-                echo $e->getMessage();
+                echo $e->getMessage(), "\n";
             }
         }
 
