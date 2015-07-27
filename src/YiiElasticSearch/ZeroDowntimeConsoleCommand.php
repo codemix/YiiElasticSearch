@@ -201,6 +201,7 @@ EOH;
         $elastic = \Yii::app()->elasticSearch;
 
         $indexesToDelete = array();
+        $indexesToAlias = array();
 
         $status = $this->performRequest($elastic->client->get('/_status', $this->requestOptions));
         $aliases = $this->performRequest($elastic->client->get('/_alias', $this->requestOptions), array(404));
@@ -287,10 +288,11 @@ EOH;
                     echo "\n  WARNING: documents are not being copied!\n\n";
                 }
 
-                // Change alias
-                if ($updateAlias && $updateAlias!=='false') {
-                    $this->actionChangeAlias($versionedIndex, $mainIndex, $currentIndex);
-                }
+                $indexesToAlias[$mainIndex] = array(
+                    'from' => $versionedIndex,
+                    'to' => $mainIndex,
+                    'old' => $currentIndex
+                );
 
                 if ($currentIndex) {
                     $indexesToDelete[$currentIndex] = true;
@@ -301,6 +303,15 @@ EOH;
 
             echo "\n";
         }
+        echo "\n";
+
+        if ($updateAlias && $updateAlias!=='false' && count($indexesToAlias)) {
+            echo "Change alias:\n";
+            foreach($indexesToAlias as $alias) {
+                $this->actionChangeAlias($alias['from'], $alias['to'], $alias['old']);
+            }
+            echo "\n";
+        }
 
         if ($deleteIndexes && $deleteIndexes!=='false' && count($indexesToDelete)) {
             $this->actionDeleteIndex(array_keys($indexesToDelete));
@@ -309,9 +320,8 @@ EOH;
             foreach(array_keys($indexesToDelete) as $index) {
                 echo "  $index\n";
             }
+            echo "\n";
         }
-
-        echo "\n";
     }
 
     /**
@@ -448,7 +458,7 @@ EOH;
 
         echo "  Adding alias: $from -> $to";
         if ($old) {
-            echo ", also remove: $old";
+            echo ", also remove alias: $old";
             $data["actions"][] = array("remove"=>array("alias"=>$to, "index"=>$old));
         }
         $data["actions"][] = array("add"=>array("alias"=>$to, "index"=>$from));
