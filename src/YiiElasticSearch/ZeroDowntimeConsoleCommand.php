@@ -294,7 +294,7 @@ EOH;
                     'old' => $currentIndex
                 );
 
-                if ($currentIndex) {
+                if ($currentIndex && $versionedIndex != $currentIndex) {
                     $indexesToDelete[$currentIndex] = true;
                 }
 
