@@ -200,18 +200,25 @@ $result = $response->getBody();
 
 ## Console Maintenance
 
-The extension comes with a simple maintenance command that can be helpful to find out
-what's going on in your index. To configure it, add this to your `console.php` configuration:
+The extension comes with two simple maintenance commands that can be helpful to find out
+what's going on in your index. To configure them, add this to your `console.php` configuration:
 
 ```php
 'commandMap' => array(
     'elastic' => array(
         'class' => 'YiiElasticSearch\ConsoleCommand',
     ),
+    'zerodowntimeelastic' => array(
+        'class' => 'YiiElasticSearch\ZeroDowntimeConsoleCommand',
+    ),
 ),
 ```
 
-This will allow you to use `yiic elastic` on the console. Here's the command help:
+This will allow you to use `yiic elastic` and `yiic zerodowntimeelastic` on the console. Here are the commands help:
+
+### Console Command
+
+This is the maintenance command for the elasticSearch component.
 
 ```
 ACTIONS
@@ -263,3 +270,41 @@ ACTIONS
     Show this help
 ```
 
+### ZeroDowntime Command
+
+This is a zero downtime maintenance command for the elasticSearch component.
+More details: [https://www.elastic.co/blog/changing-mapping-with-zero-downtime](https://www.elastic.co/blog/changing-mapping-with-zero-downtime)
+
+```
+ACTIONS
+
+  * index --models=<model1>,...
+    Add all models to the index.
+
+  * status --models=<model1>,...
+    Displays actual indexes and aliases
+
+  * schema --models=<model1>,...
+        [--version=201512121212] [--forceMigrate=false] [--bulkCopy=true] [--updateAlias=true] [--deleteIndexes=true]
+
+    Creates schema for the given models. Steps:
+     1, compare mapping
+     2, if migration is needed, create the new schema version, always create new if <forceMigrate> is true
+     3, bulk copy the previous data if <bulkCopy> is true
+     4, update aliases if <updateAlias> is true
+     5, delete indexes if <deleteIndexes> is true
+
+
+  * bulkCopy --from=index/type --to=index2/type [--properties=]
+    Bulk copy all data
+
+  * changeAlias --from=value --to=value [--old=]
+    Change alias
+
+  * deleteIndex --indexesToDelete=value
+    Delete index with all types
+    
+  help
+
+    Show this help
+```
