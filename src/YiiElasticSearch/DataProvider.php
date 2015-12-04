@@ -17,7 +17,7 @@ use \CDataProvider as CDataProvider;
 class DataProvider extends CDataProvider
 {
     /**
-     * @var CActiveRecord a model implementing the searchable interface
+     * @var CActiveRecord|array a model or an array of models implementing the searchable interface
      */
     public $model;
 
@@ -42,15 +42,47 @@ class DataProvider extends CDataProvider
     protected $fetchedData;
 
     /**
+     * @var array model classnames indexed by `$elasticIndex-$elasticType`
+     */
+    protected $_classes = array();
+
+    /**
+     * @var array name of elasticsearch indices
+     */
+    protected $_indices = array();
+
+    /**
+     * @var array name of elasticsearch types
+     */
+    protected $_types = array();
+
+    /**
      * Initialize the data provider
-     * @param CActiveRecord $model the search model
+     * @param CActiveRecord|string|array $model the search model or classname.
+     * This can also be an array of models or names in which case the search
+     * is performed over all respective indices.
+     * This can also be the classname or an array of classnames or a mix of either.
      * @param array $config the data provider configuration
      */
     public function __construct($model, $config = array())
     {
-        if (is_string($model))
-            $model = new $model;
-        $this->model = $model;
+        if (is_array($model)) {
+            $this->model = array();
+            foreach ($model as $value) {
+                if (is_string($value)) {
+                    $value = new $value;
+                }
+                $this->_classes[$value->elasticIndex.'-'.$value->elasticType] = get_class($value);
+                $this->_indices[] = $value->elasticIndex;
+                $this->_types[] = $value->elasticType;
+                $this->model[] = $value;
+            }
+        } else {
+            $this->model = is_string($model) ? new $model : $model;
+            $this->_indices[] = $this->model->elasticIndex;
+            $this->_types[] = $this->model->elasticType;
+        }
+
         foreach($config as $attribute => $value)
             $this->{$attribute} = $value;
     }
@@ -69,11 +101,11 @@ class DataProvider extends CDataProvider
         }
 
         if(!$search->index) {
-            $search->index = $this->model->elasticIndex;
+            $search->index = implode(',', $this->_indices);
         }
 
         if(!$search->type) {
-            $search->type = $this->model->elasticType;
+            $search->type = implode(',', $this->_types);
         }
 
         $this->_search = $search;
@@ -86,8 +118,8 @@ class DataProvider extends CDataProvider
     {
         if ($this->_search === null) {
             $this->_search = new Search(
-                $this->model->elasticIndex,
-                $this->model->elasticType,
+                implode(',', $this->_indices),
+                implode(',', $this->_types),
                 array(
                     'query' => array(
                         'match_all' => array()
@@ -123,12 +155,14 @@ class DataProvider extends CDataProvider
                 $search['size'] = $pagination->pageSize;
             }
 
+            $model = is_array($this->model) ? $this->model[0] : $this->model;
 
-            $this->resultSet = $this->model->getElasticConnection()->search($search);
+            $this->resultSet = $model->getElasticConnection()->search($search);
 
             $this->fetchedData = array();
-            $modelClass = get_class($this->model);
             foreach($this->resultSet->getResults() as $result) {
+                $key = $result->getIndex().'-'.$result->getType();
+                $modelClass = $this->_classes[$key];
                 $model = new $modelClass;
                 $model->setIsNewRecord(false);
                 $model->parseElasticDocument($result);
