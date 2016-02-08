@@ -129,7 +129,9 @@ EOD;
 
         $model  = $this->getModel();
         $table  = $model->tableName();
-        $count  = $model->count();
+        $provider = new \CActiveDataProvider($model);
+        $count = $provider->totalItemCount;
+
         $step   = $count > 5 ? floor($count/5) : 1;
         $index  = Yii::app()->elasticSearch->indexPrefix.$model->elasticIndex;
         $type   = $model->elasticType;
@@ -151,7 +153,6 @@ EOD;
 
         $this->message("Adding $count '{$this->model}' records from table '$table' to index '$index'\n 0% ", false);
 
-        $provider = new \CActiveDataProvider($model);
         $iterator = new \CDataProviderIterator($provider);
         foreach($iterator as $record) {
             $record->indexElasticDocument();
