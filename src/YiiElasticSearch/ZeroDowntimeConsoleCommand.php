@@ -13,8 +13,6 @@ namespace YiiElasticSearch;
  */
 class ZeroDowntimeConsoleCommand extends \CConsoleCommand
 {
-    const DISPLAY_STEPS = 10;
-
     /**
      * @var array
      */
@@ -207,7 +205,9 @@ EOH;
         $aliases = $this->performRequest($elastic->client->get('/_alias', $this->requestOptions), array(404));
         $mappings = $this->performRequest($elastic->client->get('/_mapping', $this->requestOptions));
 
-        foreach($models as $modelName) {
+        $indexesToMigrate = array();
+
+        foreach ($models as $modelName) {
             $model = \CActiveRecord::model($modelName);
 
             echo "{$modelName}:\n";
@@ -215,92 +215,123 @@ EOH;
             $mainIndex = $model->getElasticIndex();
             $type = $model->getElasticType();
 
-            $versionedIndex = $mainIndex. '_' . $version;
+            $versionedIndex = $mainIndex . '_' . $version;
 
             // Dig out old index
             $currentIndex = null;
-            foreach($aliases as $alias => $aliasDetail) {
+            foreach ($aliases as $alias => $aliasDetail) {
                 if (array_key_exists($mainIndex, $aliasDetail['aliases'])) {
                     $currentIndex = $alias;
                 }
             }
 
-            $mapping = $model->getElasticMapping();
+            $migrate = false;
 
-            $migrate = $forceMigrate;
-            if (!$migrate) {
+            // New mapping for the type
+            $currentMapping = $model->getElasticMapping();
+            $oldMapping = isset($mappings[$currentIndex]['mappings'][$type]) ? $mappings[$currentIndex]['mappings'][$type] : array();
+
+            if (!$oldMapping || $forceMigrate) {
+                $migrate = true;
+                echo "  Need to migrate!\n";
+            } else {
                 // Check mapping change
-                if (isset($mappings[$currentIndex]['mappings'][$type])) {
-                    $diff1 = $this->arrayRecursiveDiff($mappings[$currentIndex]['mappings'][$type], $mapping);
-                    $diff2 = $this->arrayRecursiveDiff($mapping, $mappings[$currentIndex]['mappings'][$type]);
+                $diff1 = $this->arrayRecursiveDiff($oldMapping, $currentMapping);
+                $diff2 = $this->arrayRecursiveDiff($currentMapping, $oldMapping);
 
-                    if ($diff1 || $diff2) {
-                        echo "  changes: ", json_encode($diff1), " => ", json_encode($diff2), "\n";
+                if ($diff1 || $diff2) {
+                    echo "  changes: ", json_encode($diff1), " => ", json_encode($diff2), "\n";
 
-                        $prompt = $this->prompt("  {$currentIndex}/{$type} changed, create new schema?", "No");
-                        $migrate = substr(strtolower($prompt), 0, 1) == 'y' ? true : false;
-                    } else {
-                        echo "  OK!\n";
-                    }
+                    $prompt = $this->prompt("  {$currentIndex}/{$type} changed, create new schema?", "No");
+                    $migrate = substr(strtolower($prompt), 0, 1) == 'y' ? true : false;
                 } else {
-                    $migrate = true;
+                    echo "  Up-to-date!\n";
                 }
             }
 
+            if (!isset($indexesToMigrate[$mainIndex])) {
+                $indexesToMigrate[$mainIndex] = array(
+                    'migrate' => false,
+                    'currentIndex' => $currentIndex,
+                    'versionedIndex' => $versionedIndex,
+                    'types' => array(),
+                );
+            }
+
+            $indexesToMigrate[$mainIndex]['migrate'] = $indexesToMigrate[$mainIndex]['migrate'] || $migrate;
+
+            $indexesToMigrate[$mainIndex]['types'][$type] = array(
+                'modelName' => $modelName,
+                'migrate' => $migrate,
+                'mapping' => $migrate ? $currentMapping : $oldMapping,
+            );
+
+        }
+        echo "\n";
+
+        foreach ($indexesToMigrate as $mainIndex => $mainIndexValue) {
+
             // Migrate if needed
-            if ($migrate) {
+            if ($mainIndexValue['migrate']) {
+
+                echo "{$mainIndex}:\n";
 
                 // Create index if needed
-                if (isset($status['indices'][$versionedIndex])) {
-                    echo "  Index: '{$versionedIndex}' exists.\n";
+                if (isset($status['indices'][$mainIndexValue['versionedIndex']])) {
+                    echo "  Index: '{$mainIndexValue['versionedIndex']}' exists.\n";
                 } else {
                     $this->performRequest(
                         $elastic->client
-                            ->put($versionedIndex, $this->requestOptions)
+                            ->put($mainIndexValue['versionedIndex'], $this->requestOptions)
                             ->setBody('')
                     );
-                    echo "  Index: '{$versionedIndex}' created.\n";
+                    echo "  Index: '{$mainIndexValue['versionedIndex']}' created.\n";
 
-                    $status['indices'][$versionedIndex] = 'CREATED';
+                    $status['indices'][$mainIndexValue['versionedIndex']] = 'CREATED';
                 };
 
-                // Create mapping
-                $this->performRequest(
-                    $elastic->client
-                        ->put($versionedIndex.'/_mapping/'.$type, $this->requestOptions)
-                        ->setBody(json_encode(array(
-                            "{$type}" => $mapping
-                        )))
-                );
-                echo "  Type: '{$type}' created.\n";
-
-
-                // Reindex if needed
-                if ($bulkCopy && isset($mappings[$currentIndex]['mappings'][$type])) {
-                    $properties = array_keys($mapping['properties']);
-
-                    $this->actionBulkCopy(
-                        $currentIndex . '/' . $type,
-                        $versionedIndex . '/' .$type,
-                        $properties
-                    );
-                } else {
-                    echo "\n  WARNING: documents are not being copied!\n\n";
-                }
-
                 $indexesToAlias[$mainIndex] = array(
-                    'from' => $versionedIndex,
+                    'from' => $mainIndexValue['versionedIndex'],
                     'to' => $mainIndex,
-                    'old' => $currentIndex
+                    'old' => $mainIndexValue['currentIndex'],
                 );
 
-                if ($currentIndex && $versionedIndex != $currentIndex) {
-                    $indexesToDelete[$currentIndex] = true;
+                if ($mainIndexValue['currentIndex'] && $mainIndexValue['versionedIndex'] != $mainIndexValue['currentIndex']) {
+                    $indexesToDelete[$mainIndexValue['currentIndex']] = true;
                 }
 
-                $mappings[$versionedIndex]['mappings'][$type] = $mapping;
-            }
+                echo "\n  Types:\n\n";
 
+                foreach ($mainIndexValue['types'] as $type => $typeValue) {
+                    echo "  - {$type}:\n";
+
+                    // Create mapping
+                    $this->performRequest(
+                        $elastic->client
+                            ->put($mainIndexValue['versionedIndex'] . '/_mapping/' . $type, $this->requestOptions)
+                            ->setBody(json_encode(array(
+                                "{$type}" => $typeValue['mapping']
+                            )))
+                    );
+                    echo "      Type: '{$type}' created.\n";
+
+                    // Reindex if needed
+                    if ($bulkCopy && isset($mappings[$mainIndexValue['currentIndex']]['mappings'][$type])) {
+                        $properties = array_keys($typeValue['mapping']['properties']);
+
+                        $this->actionBulkCopy(
+                            $mainIndexValue['currentIndex'] . '/' . $type,
+                            $mainIndexValue['versionedIndex'] . '/' . $type,
+                            $properties
+                        );
+                    } else {
+                        echo "\n  WARNING: documents are not being copied!\n\n";
+                    }
+
+                    $mappings[$mainIndexValue['versionedIndex']]['mappings'][$type] = $typeValue['mapping'];
+                    echo "\n";
+                }
+            }
             echo "\n";
         }
         echo "\n";
@@ -386,6 +417,7 @@ EOH;
 
         /** @var \YiiElasticSearch\Connection $elastic */
         $elastic = \Yii::app()->elasticSearch;
+        $limitPerShard = 200;
 
         echo '  Bulk copy:';
         $response = $this->performRequest(
@@ -394,15 +426,12 @@ EOH;
                 ->setBody(json_encode(array(
                     "fields" => array('_source', '_parent', '_routing', '_timestamp'),
                     "query" => array("match_all"=>array()),
-                    "size" => 1000
+                    "size" => $limitPerShard
                 )))
         );
         $scroll_id = $response['_scroll_id'];
-
-        //
-
+        //$limit = $response['_shards']['total'] * $limitPerShard;
         $total = $response['hits']['total'];
-        $step  = $total > self::DISPLAY_STEPS ? floor($total/self::DISPLAY_STEPS) : 1;
 
         $count = 0;
         while($scroll_id) {
@@ -443,7 +472,7 @@ EOH;
                         ->setBody($bulkData)
                 );
                 unset($bulkData);
-                $this->echoPercentage($count, $step);
+                $this->echoPercentage($count, $total);
             }
         };
         echo " 100% ({$count} document)\n";
@@ -496,7 +525,6 @@ EOH;
 
         $count = 0;
         $total = $model->count();
-        $step  = $total > self::DISPLAY_STEPS ? floor($total/self::DISPLAY_STEPS) : 1;
 
         echo "Indexing {$modelName}: ";
 
@@ -505,7 +533,7 @@ EOH;
         foreach($iterator as $record) {
             $record->indexElasticDocument();
             $count++;
-            $this->echoPercentage($count, $step);
+            $this->echoPercentage($count, $total);
         }
 
         echo "100%\n";
@@ -513,13 +541,11 @@ EOH;
         return $count;
     }
 
-    private function echoPercentage($count, $step)
+    private function echoPercentage($count, $total)
     {
-        if(($count % $step)===0) {
-            $percent = (100/self::DISPLAY_STEPS)*$count/$step;
-            if($percent < 100) {
-                echo $percent.'% ';
-            }
+        $percent = floor($count/$total*100);
+        if($percent < 100) {
+            echo $percent.'% ';
         }
     }
 }
