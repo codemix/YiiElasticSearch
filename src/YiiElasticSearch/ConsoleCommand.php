@@ -355,8 +355,8 @@ EOD;
             $request->send();
         } catch (\Guzzle\Http\Exception\BadResponseException $e) {
             $body = $e->getResponse()->getBody(true);
-            if(($msg = json_decode($body))!==null) {
-                $this->message($msg->error);
+            if(($msg = json_decode($body))!==null && isset($msg->error)) {
+                $this->message(is_object($msg->error) ? $msg->error->reason : $msg->error);
             } else {
                 $this->message($e->getMessage());
             }
