@@ -174,7 +174,7 @@ class Connection extends ApplicationComponent
         catch (\Guzzle\Http\Exception\BadResponseException $e) {
             $body = $e->getResponse()->getBody(true);
             if(($msg = json_decode($body))!==null && isset($msg->error)) {
-                throw new \CException($msg->error);
+                throw new \CException(is_object($msg->error) ? $msg->error->reason : $msg->error);
             } else {
                 throw new \CException($e);
             }
