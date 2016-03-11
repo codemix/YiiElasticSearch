@@ -48,6 +48,10 @@ class ConsoleCommand extends CConsoleCommand
      * @var bool whether to only perform the command if target does not exist. Default is false.
      */
     public $skipExisting = false;
+    /**
+     * @var string addition options for a creating index
+     */
+    public $options = '{}';
 
     /**
      * @return string help for this command
@@ -196,9 +200,9 @@ EOD;
             $this->usageError("Invalid JSON in $map");
         }
 
-        $body = json_encode(array(
+        $body = json_encode(\CMap::mergeArray(array(
             'mappings' => $mapping,
-        ));
+        ), json_decode($this->options, true)));
 
         $this->performRequest($elastic->client->put($index, array("Content-type" => "application/json"))->setBody($body));
 
