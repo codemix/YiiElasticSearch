@@ -22,6 +22,11 @@ class SearchResult extends Document
     protected $_score;
 
     /**
+     * @var array the script_fields
+     */
+    protected $_scriptFields;
+
+    /**
      * Initialize the search result
      * @param ResultSet $resultSet the result set this is a part of
      * @param array $result the result data
@@ -34,6 +39,7 @@ class SearchResult extends Document
         $this->_id = $result['_id'];
         $this->_score = $result['_score'];
         $this->_source = $result['_source'];
+        $this->_scriptFields = isset($result['fields']) ? $result['fields'] : [];
     }
 
     /**
@@ -50,5 +56,13 @@ class SearchResult extends Document
     public function getResultSet()
     {
         return $this->_resultSet;
+    }
+
+    /**
+     * @return array of the Script fields
+     */
+    public function getScriptFields()
+    {
+        return $this->_scriptFields;
     }
 }
