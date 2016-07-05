@@ -39,7 +39,7 @@ class SearchResult extends Document
         $this->_id = $result['_id'];
         $this->_score = $result['_score'];
         $this->_source = $result['_source'];
-        $this->_scriptFields = isset($result['fields']) ? $result['fields'] : [];
+        $this->_scriptFields = isset($result['fields']) ? $result['fields'] : array();
     }
 
     /**
