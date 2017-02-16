@@ -90,6 +90,9 @@ class SearchableBehavior extends CActiveRecordBehavior
      */
     public function decorateElasticIndex($index)
     {
+        if ($this->getElasticConnection()->indexPrefix) {
+            $index = $this->getElasticConnection()->indexPrefix . self::INDEX_SEPARATOR . $index;
+        }
         if (self::$indexPostfix) {
             $index .= self::INDEX_SEPARATOR . self::$indexPostfix;
         }
