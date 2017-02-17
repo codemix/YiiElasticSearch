@@ -119,11 +119,12 @@ EOH;
         foreach($models as $modelName) {
             $model = \CActiveRecord::model($modelName);
 
-            if (!isset($indexes[$model->getElasticIndex()])) {
-                $indexes[$model->getElasticIndex()] = array();
+            $index = \Yii::app()->elasticSearch->indexPrefix.$model->getElasticIndex();
+            if (!isset($indexes[$index])) {
+                $indexes[$index] = array();
             }
 
-            $indexes[$model->getElasticIndex()][] = $modelName;
+            $indexes[$index][] = $modelName;
         }
 
         $indexVersions = array();
@@ -212,7 +213,7 @@ EOH;
 
             echo "{$modelName}:\n";
 
-            $mainIndex = $model->getElasticIndex();
+            $mainIndex = \Yii::app()->elasticSearch->indexPrefix.$model->getElasticIndex();
             $type = $model->getElasticType();
 
             $versionedIndex = $mainIndex . '_' . $version;
